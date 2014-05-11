@@ -6,7 +6,8 @@ This library provides a simple means to performing an OAuth handshake with a Med
 Usage
 -----
 
-.. python : 
+.. code-block:: python
+
     import mwoauth
     oauth = mwoauth.OAuth(
         "https://en.wikipedia.org/w/index.php", 
