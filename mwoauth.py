@@ -1,24 +1,42 @@
-import requests, time
+from collections import namedtuple
+import jwt
+import requests
 from requests_oauthlib import OAuth1
-from urlparse import parse_qs, urlunparse
+import time
+from urlparse import parse_qs
 from urllib import urlencode
 import urllib2
-from collections import namedtuple
-from calendar import timegm
-from datetime import datetime
-
-import jwt
 
 ResourceOwner = namedtuple("ResourceOwner", ['key', 'secret'])
 Client = namedtuple("Client", ['key', 'secret'])
 
 class OAuth:
+	"""
+	Constructs a client for managing OAuth handshakes from a base URI
+	(ending in "/w/index.php") and a "comsumer/client" key and secret.
 	
+	:Parameters:
+		uri : `str`
+			The base URI of the wiki to authenticate with
+		key : `str`
+			The "consumer/client" key (provided by MediaWiki)
+		secret : `str`
+			The "consumer/client" secret (provided by MediaWiki)
+	"""
 	def __init__(self, uri, key, secret):
 		self.uri = uri
 		self.client = Client(key, secret)
 	
 	def initiate(self):
+		"""
+		Initiates an oauth handshake.
+		
+		:Returns:
+			redirect_url : str
+				A URL to send the user ("resource owner")
+			resource_owner : `ResourceOwner`
+				An object containing resource owner information (pass this to complete)
+		"""
 		auth = OAuth1(self.client.key, 
 		              client_secret=self.client.secret, 
 		              callback_uri='oob')
@@ -44,6 +62,9 @@ class OAuth:
 		)
 		
 	def complete(self, resource_owner, response_qs):
+		"""
+		Completes an oauth handshake
+		"""
 		callback_data = parse_qs(response_qs)
 		
 		# TODO probably not assert
@@ -102,8 +123,7 @@ class OAuth:
 		
 		# Verify we are within the time limits of the token.
 		# Issued at (iat) should be in the past
-		#now = int(time.time())
-		now = timegm(datetime.utcnow().utctimetuple())
+		now = int(time.time())
 		if not int(identify_token['iat']) <= now:
 			raise Exception('JSON Web Token Validation Problem, iat')
 		
