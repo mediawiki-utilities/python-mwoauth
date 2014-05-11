@@ -2,13 +2,36 @@ from collections import namedtuple
 import jwt
 import requests
 from requests_oauthlib import OAuth1
+import six
 import time
-from urlparse import parse_qs
-from urllib import urlencode
-import urllib2
+try:
+	from urlparse import parse_qs
+except ImportError:
+	from urllib.parse import parse_qs
+
+try:
+	from urllib import urlencode
+except ImportError:
+	from urllib.parse import urlencode
+
+try:
+	from urlparse import urlparse
+except ImportError:
+	from urllib.parse import urlparse
+
+
 
 ResourceOwner = namedtuple("ResourceOwner", ['key', 'secret'])
 Client = namedtuple("Client", ['key', 'secret'])
+
+def safe_parse_qs(qs):
+	params = parse_qs(qs)
+	safe_params = {}
+	for key in params:
+		values = params[key]
+		safe_params[six.b(key)] = [six.b(v) for v in values]
+	
+	return safe_params
 
 class OAuth:
 	"""
@@ -44,11 +67,12 @@ class OAuth:
 		r = requests.post(url=self.uri,
 		                  params={'title': "Special:OAuth/initiate"},
 		                  auth=auth)
-		
+		print(r.content)
 		credentials = parse_qs(r.content)
+		
 		resource_owner = ResourceOwner(
-			credentials.get('oauth_token')[0],
-			credentials.get('oauth_token_secret')[0]
+			credentials.get(six.b('oauth_token'))[0],
+			credentials.get(six.b('oauth_token_secret'))[0]
 		)
 		
 		return (
@@ -65,14 +89,14 @@ class OAuth:
 		"""
 		Completes an oauth handshake
 		"""
-		callback_data = parse_qs(response_qs)
+		callback_data = safe_parse_qs(response_qs)
 		
 		# TODO probably not assert
 		# Handle lack of oauth_token
 		# etc. 
-		assert resource_owner.key == callback_data.get("oauth_token")[0]
+		assert resource_owner.key == callback_data.get(six.b("oauth_token"))[0]
 		
-		verifier = callback_data.get("oauth_verifier")[0]
+		verifier = callback_data.get(six.b("oauth_verifier"))[0]
 		
 		auth = OAuth1(self.client.key, 
 		              client_secret=self.client.secret,
@@ -86,8 +110,8 @@ class OAuth:
 		
 		credentials = parse_qs(r.content)
 		authorized_owner = ResourceOwner(
-			credentials.get('oauth_token')[0],
-			credentials.get('oauth_token_secret')[0]
+			credentials.get(six.b('oauth_token'))[0],
+			credentials.get(six.b('oauth_token_secret'))[0]
 		)
 		
 		return OAuth1(self.client.key,
@@ -112,8 +136,8 @@ class OAuth:
 		                     self.client.secret, False)
 		
 		# Verify the issuer is who we expect (server sends $wgCanonicalServer)
-		iss = urllib2.urlparse.urlparse(identify_token['iss']).netloc
-		mw_domain = urllib2.urlparse.urlparse(self.uri).netloc
+		iss = urlparse(identify_token['iss']).netloc
+		mw_domain = urlparse(self.uri).netloc
 		if iss != mw_domain:
 			raise Exception('JSON Web Token Validation Problem, iss')
 		
