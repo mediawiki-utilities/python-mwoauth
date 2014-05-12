@@ -8,16 +8,23 @@ Usage
 
 .. code-block:: python
 
-    import mwoauth
-    oauth = mwoauth.OAuth(
-        "https://en.wikipedia.org/w/index.php", 
-        "<consumer key>", 
-        "<consumer secret>"
-    )
-    redirect, resource_owner = oauth.initiate()
-    print("Go to: %s" % redirect)
-    
-    auth = oauth.complete(resource_owner, raw_input("response_qs: "))
-    
-    print oauth.identify(auth)
+	import mwoauth
+	from six.moves import input # For compatibility between python 2 and 3
+	
+	# Construct handshaker
+	handshaker = mwoauth.Handshaker("https://en.wikipedia.org/w/index.php", 
+									mwoauth.Consumer("<key>", "<secret>"))
+	
+	# Step 1: Initialize
+	redirect, resource_owner = handshaker.initiate()
+	
+	# Step 2: Authorize
+	print("Point your browser to: %s" % redirect) # 
+	response_qs = input("Response query string: ")
+	
+	# Step 3: Complete
+	authorized_resource_owner = handshaker.complete(resource_owner, response_qs)
+	
+	# Step 4: Identify (optional)
+	print(handshaker.identify(authorized_resource_owner))
 

@@ -6,7 +6,7 @@ def read(fname):
 
 setup(
     name = "mwoauth",
-    version = "0.1.0",
+    version = "0.1.1",
     author = "Aaron Halfaker / Filippo Valsorda",
     author_email = "ahalfaker@wikimedia.org",
     description = ("A generic MediaWiki OAuth handshake helper."),
