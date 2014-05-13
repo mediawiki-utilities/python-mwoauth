@@ -31,6 +31,7 @@ from collections import namedtuple
 import jwt, requests, time, six
 from requests_oauthlib import OAuth1
 import six
+
 try:
 	from urlparse import parse_qs
 except ImportError:
@@ -77,12 +78,15 @@ See "Special:OAuthConsumerRegistration" on wikis with Extension:OAuth installed.
 
 def safe_parse_qs(qs):
 	params = parse_qs(qs)
-	safe_params = {}
-	for key in params:
-		values = params[key]
-		safe_params[six.b(key)] = [six.b(v) for v in values]
 	
-	return safe_params
+	if params != None:
+		safe_params = {}
+		for key in params:
+			values = params[key]
+			safe_params[six.b(key)] = [six.b(v) for v in values]
+		
+		return safe_params
+	
 
 def initiate(uri, consumer):
 	"""
@@ -122,18 +126,19 @@ def initiate(uri, consumer):
 	
 	credentials = parse_qs(r.content)
 	
+	if credentials == None:
+		raise Exception("Expected x-www-form-urlencoded response from " + \
+		                "MediaWiki, but got some HTML formatted error instead.")
+	
 	resource_owner = ResourceOwner(
 		credentials.get(six.b('oauth_token'))[0],
 		credentials.get(six.b('oauth_token_secret'))[0]
 	)
 	
 	return (
-		(
-			self.uri + "?" + 
-			urlencode({'title': "Special:OAuth/authorize",
-					   'oauth_token': resource_owner.key,
-					   'oauth_consumer.key': self.consumer.key})
-		),
+		uri + "?" + urlencode({'title': "Special:OAuth/authorize",
+		                       'oauth_token': resource_owner.key,
+		                       'oauth_consumer_key': consumer.key}),
 		resource_owner
 	)
 
@@ -160,24 +165,35 @@ def complete(uri, consumer, resource_owner, response_qs):
 	"""
 	callback_data = safe_parse_qs(response_qs)
 	
-	# TODO probably not assert
-	# Handle lack of oauth_token
-	# etc. 
-	assert resource_owner.key == callback_data.get(six.b("oauth_token"))[0]
+	# Check if the query string references the right temp resource owner key
+	callback_owner_key = callback_data.get(six.b("oauth_token"))[0]
+	if not resource_owner.key == callback_owner_key:
+		raise Exception("Unexpect resource owner key " + \
+		                "{0}, expected {1}.".format(callback_owner_key,
+		                                            resource_owner.key))
 	
+	# Get the verifier token
 	verifier = callback_data.get(six.b("oauth_verifier"))[0]
 	
-	auth = OAuth1(self.consumer.key, 
-				  client_secret=self.consumer.secret,
+	# Construct a new auth with the verifier
+	auth = OAuth1(consumer.key, 
+				  client_secret=consumer.secret,
 				  resource_owner_key=resource_owner.key,
 				  resource_owner_secret=resource_owner.secret,
 				  verifier=verifier)
 	
-	r = requests.post(url=self.uri,
+	# Send the verifier and ask for an authorized resource owner key/secret
+	r = requests.post(url=uri,
 					  params={'title': "Special:OAuth/token"},
 					  auth=auth)
 	
+	# Parse response and construct an authorized resource owner
 	credentials = parse_qs(r.content)
+	
+	if credentials == None:
+		raise Exception("Expected x-www-form-urlencoded response from " + \
+		                "MediaWiki, but got some HTML formatted error instead.")
+	
 	authorized_owner = ResourceOwner(
 		credentials.get(six.b('oauth_token'))[0],
 		credentials.get(six.b('oauth_token_secret'))[0]
@@ -203,14 +219,13 @@ def identify(uri, consumer, resource_owner, leeway=10):
 	"""
 	
 	# Construct an OAuth auth
-	auth = OAuth1(self.consumer.key, 
-	              client_secret=self.consumer.secret,
+	auth = OAuth1(consumer.key, 
+	              client_secret=consumer.secret,
 	              resource_owner_key=resource_owner.key,
 	              resource_owner_secret=resource_owner.secret)
 	
 	# Request the identity using auth
-	# TODO: What exception do we throw when the resource owner is invalid?
-	r = requests.post(url=self.uri,
+	r = requests.post(url=uri,
 	                  params={'title': "Special:OAuth/identify"},
 	                  auth=auth)
 	
@@ -230,14 +245,14 @@ def identify(uri, consumer, resource_owner, leeway=10):
 	# Check signature
 	try:
 		jwt.verify_signature(identity, signing_input, header, signature,
-		                     self.consumer.secret, False)
+		                     consumer.secret, False)
 	except jwt.DecodeError as e:
 		raise Exception("Could not verify the jwt signature: {0}".format(e))
 	
 	
 	# Verify the issuer is who we expect (server sends $wgCanonicalServer)
 	issuer = urlparse(identity['iss']).netloc
-	expected_domain = urlparse(self.uri).netloc
+	expected_domain = urlparse(uri).netloc
 	if not issuer == expected_domain:
 		raise Exception("Unexpected issuer " + \
 		                "{0}, expected {1}".format(issuer, expected_domain))
@@ -245,20 +260,20 @@ def identify(uri, consumer, resource_owner, leeway=10):
 	
 	# Verify we are the intended audience of this response
 	audience = identity['aud']
-	if not audience == self.consumer.key:
+	if not audience == consumer.key:
 		raise Exception("Unexpected audience " + \
 		                "{0}, expected {1}".format(aud, my_domain))
 	
 	now = time.time()
 	
 	# Check that the identity was issued in the past.
-	issued_at = identity['iat']
-	if not now >= issued_at - leeway:
+	issued_at = float(identity['iat'])
+	if not now >= (issued_at - leeway):
 		raise Exception("Identity issued {0} ".format(issued_at - now) + \
 		                "seconds in the future!")
 	
 	# Check that the identity has not yet expired
-	expiration = identity['exp']
+	expiration = float(identity['exp'])
 	if not now <= expiration:
 		raise Exception("Identity expired {0} ".format(expiration - now) + \
 		                "seconds ago!")

@@ -13,7 +13,7 @@ Usage
 	
 	# Construct handshaker
 	handshaker = mwoauth.Handshaker("https://en.wikipedia.org/w/index.php", 
-									mwoauth.Consumer("<key>", "<secret>"))
+	                                mwoauth.Consumer("<key>", "<secret>"))
 	
 	# Step 1: Initialize
 	redirect, resource_owner = handshaker.initiate()
