@@ -6,34 +6,31 @@ Example:
 
 .. code-block::python
 
-	import mwoauth
+	from mwoauth import ConsumerToken, Handshaker
 	from six.moves import input # For compatibility between python 2 and 3
 	
 	# Consruct a "consumer" from the key/secret provided by MediaWiki
 	import config
-	consumer = mwoauth.Consumer(config.consumer_key, config.consumer_secret)
+	consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
 	
 	# Construct handshaker with wiki URI and consumer
 	handshaker = mwoauth.Handshaker("https://en.wikipedia.org/w/index.php",
-	                                consumer)
+	                                consumer_token)
 	
 	# Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
-	redirect, resource_owner = handshaker.initiate()
+	redirect, request_token = handshaker.initiate()
 	
 	# Step 2: Authorize -- send user to MediaWiki to confirm authorization
 	print("Point your browser to: %s" % redirect) # 
 	response_qs = input("Response query string: ")
 	
 	# Step 3: Complete -- obtain authorized key/secret for "resource owner"
-	authorized_resource_owner = handshaker.complete(resource_owner, response_qs)
+	access_token = handshaker.complete(request_token, response_qs)
+	print(str(access_token))
 	
 	# Step 4: Identify -- (optional) get identifying information about the user
-	identity = handshaker.identify(authorized_resource_owner)
-	
-	# Print results
+	identity = handshaker.identify(access_token)
 	print("Identified as {username}.".format(**identity))
-	print("key={0}".format(authorized_resource_owner.key))
-	print("secret={0}".format(authorized_resource_owner.secret))
 
 """
 from collections import namedtuple
@@ -57,33 +54,52 @@ except ImportError:
 	from urllib.parse import urlparse
 
 
+Token = namedtuple("Token", ['key', 'secret'])
 
-ResourceOwner = namedtuple("ResourceOwner", ['key', 'secret'])
-"""
-Represents a key/secret pair for a user (AKA "resource owner").  Note that both
-temporary and authorized key/secret pairs can be stored.
+class ConsumerToken(Token):
+	"""
+	Represents a consumer (you).  This key/secrets pair is provided by MediaWiki
+	when you register an OAuth consumer (see 
+	``Special:OAuthConsumerRegistration''). Note that Extension:OAuth must be 
+	installed in order in order for ``Special:OAuthConsumerRegistration'' to 
+	appear. 
+	
+	:Parameters:
+		key : `str`
+			A hex string identifying the user
+		secret : `str`
+			A hex string used to sign communications
+	"""
+	pass
 
-:Parameters:
-	key : `str`
-		A hex string identifying the user
-	secret : `str`
-		A hex string used to sign requests as **from** a particular 
-		user/resource owner
-"""
+class RequestToken(Token):
+	"""
+	Represents a request for access during authorization.  This key/secret pair 
+	is provided by MediaWiki via ``Special:OAuth/initiate''.  
+	Once the user authorize you, this token can be traded for an `AccessToken`
+	via `complete()`.
+	
+	:Parameters:
+		key : `str`
+			A hex string identifying the user
+		secret : `str`
+			A hex string used to sign communications
+	"""
+	pass
 
-Consumer = namedtuple("Consumer", ['key', 'secret'])
-"""
-Represents a key/secret pair for a consumer/client (your system).  These keys 
-and secrets are provided by MediaWiki when registering an OAuth consumer.  
-See "Special:OAuthConsumerRegistration" on wikis with Extension:OAuth installed.
-
-:Parameters:
-	key : `str`
-		A hex string identifying the consumer/client with a MediaWiki instance.
-	secret : `str`
-		A hex string used to encrypt/decrypt communications with a MediaWiki
-		instance.
-"""
+class AccessToken(Token): 
+	"""
+	Represents an authorized user.  This key and secret is provided by MediaWiki
+	via ``Special:OAuth/complete'' and later used to show MediaWiki evidence of
+	authorization.
+	
+	:Parameters:
+		key : `str`
+			A hex string identifying the user
+		secret : `str`
+			A hex string used to sign communications
+	"""
+	pass
 
 def safe_parse_qs(qs):
 	params = parse_qs(qs)
@@ -97,39 +113,31 @@ def safe_parse_qs(qs):
 		return safe_params
 	
 
-def initiate(uri, consumer):
+def initiate(mw_uri, consumer_token):
 	"""
-	Initiates an oauth handshake with MediaWiki and returns a URL to
-	redirect the user to and a `ResourceOwner` to validate responses
-	against.
+	Initiates an oauth handshake with MediaWik.
 	
 	:Parameters:
-		uri : `str`
-			The base URI of the wiki to authenticate with.  Should end in
-			"/w/index.php". 
-		consumer : `Consumer`
-			A key/secret pair representing the consumer/client
+		mw_uri : `str`
+			The base URI of the MediaWiki installation.  Note that the URI 
+			should end in ``"index.php"''. 
+		consumer_token : `ConsumerToken`
+			A token representing you, the consumer.  Provided by MediaWiki via
+			``Special:OAuthConsumerRegistration''.
 	
 	:Returns:
-		A pair of values representing the URL to redirect the user to and 
-		a `ResourceOwner` containing a temporary key/secret pair for the 
-		user.  Note that this key/secret pair is not useful beyond this
-		step of the handshake.  `complete()` must be called to obtain an 
-		authorized key/secret pair.
+		A `tuple` of two values:
 		
-		redirect_url : `str`
-			A URL to send the user ("resource owner")
-		resource_owner : `ResourceOwner`
-			An object containing resource owner information 
-			(pass this to `complete()`)
+		* a MediaWiki URL to direct the user to
+		* a `RequestToken` representing a request for access
 		
 	
 	"""
-	auth = OAuth1(consumer.key,
-				  client_secret=consumer.secret,
+	auth = OAuth1(consumer_token.key,
+				  client_secret=consumer_token.secret,
 				  callback_uri='oob')
 	
-	r = requests.post(url=uri,
+	r = requests.post(url=mw_uri,
 					  params={'title': "Special:OAuth/initiate"},
 					  auth=auth)
 	
@@ -139,60 +147,61 @@ def initiate(uri, consumer):
 		raise Exception("Expected x-www-form-urlencoded response from " + \
 		                "MediaWiki, but got some HTML formatted error instead.")
 	
-	resource_owner = ResourceOwner(
+	request_token = RequestToken(
 		credentials.get(six.b('oauth_token'))[0],
 		credentials.get(six.b('oauth_token_secret'))[0]
 	)
 	
 	return (
-		uri + "?" + urlencode({'title': "Special:OAuth/authorize",
-		                       'oauth_token': resource_owner.key,
-		                       'oauth_consumer_key': consumer.key}),
-		resource_owner
+		mw_uri + "?" + urlencode({'title': "Special:OAuth/authorize",
+		                       'oauth_token': request_token.key,
+		                       'oauth_consumer_key': consumer_token.key}),
+		request_token
 	)
 
-def complete(uri, consumer, resource_owner, response_qs):
+def complete(mw_uri, consumer_token, request_token, response_qs):
 	"""
-	Completes an OAuth handshake with MediaWiki.
+	Completes an OAuth handshake with MediaWiki by exchanging an 
 	
 	:Parameters:
-		uri : `str`
-			The base URI of the wiki to authenticate with.  Should end in
-			"/w/index.php". 
-		consumer : `Consumer`
-			A key/secret pair representing the consumer/client
-		resource_owner : ResourceOwner
-			A temporary key/secret pair from a call to `initiate()`
+		mw_uri : `str`
+			The base URI of the MediaWiki installation.  Note that the URI 
+			should end in ``"index.php"''. 
+		consumer_token : `ConsumerToken`
+			A key/secret pair representing you, the consumer.
+		request_token : `RequestToken`
+			A temporary token representing the user.  Returned by 
+			`initiate()`.
 		response_qs : `bytes`
-			The query string generated by MediaWiki after the user 
-			completed the authorization step.  (Everything after "?" in the
-			URL.)
+			The query string of the URL that MediaWiki forwards the user back
+			after authorization.
 		
 	:Returns:
-		A `ResourceOwner` containing the authorized key/secret pair that 
-		can be stored and used as long as the does not deauthorize the consumer.
+		An `AccessToken` containing an authorized key/secret pair that 
+		can be stored and used by you.
 	"""
+	
 	callback_data = safe_parse_qs(response_qs)
 	
 	# Check if the query string references the right temp resource owner key
-	callback_owner_key = callback_data.get(six.b("oauth_token"))[0]
-	if not resource_owner.key == callback_owner_key:
-		raise Exception("Unexpect resource owner key " + \
-		                "{0}, expected {1}.".format(callback_owner_key,
-		                                            resource_owner.key))
+	request_token_key = callback_data.get(six.b("oauth_token"))[0]
+	if not request_token.key == request_token_key:
+		raise Exception("Unexpect request token key " + \
+		                "{0}, expected {1}.".format(request_token_key,
+		                                            request_token.key))
 	
 	# Get the verifier token
 	verifier = callback_data.get(six.b("oauth_verifier"))[0]
 	
 	# Construct a new auth with the verifier
-	auth = OAuth1(consumer.key, 
-				  client_secret=consumer.secret,
-				  resource_owner_key=resource_owner.key,
-				  resource_owner_secret=resource_owner.secret,
+	auth = OAuth1(consumer_token.key, 
+				  client_secret=consumer_token.secret,
+				  resource_owner_key=request_token.key,
+				  resource_owner_secret=request_token.secret,
 				  verifier=verifier)
 	
 	# Send the verifier and ask for an authorized resource owner key/secret
-	r = requests.post(url=uri,
+	r = requests.post(url=mw_uri,
 					  params={'title': "Special:OAuth/token"},
 					  auth=auth)
 	
@@ -201,40 +210,43 @@ def complete(uri, consumer, resource_owner, response_qs):
 	
 	if credentials == None:
 		raise Exception("Expected x-www-form-urlencoded response from " + \
-		                "MediaWiki, but got some HTML formatted error instead.")
+		                "MediaWiki, but got some else instead: {0}".format(r.content))
 	
-	authorized_owner = ResourceOwner(
+	access_token = AccessToken(
 		credentials.get(six.b('oauth_token'))[0],
 		credentials.get(six.b('oauth_token_secret'))[0]
 	)
 	
-	return authorized_owner
+	return access_token
 
-def identify(uri, consumer, resource_owner, leeway=10):
+def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 	"""
-	Gather's identifying information about an authorized resource_owner.
+	Gather's identifying information about a user via an authorized token.
 	
 	:Parameters:
-		uri : `str`
-			The base URI of the wiki to authenticate with.  Should end in
-			"/w/index.php". 
-		consumer : `Consumer`
-			A key/secret pair representing the consumer/client
-		resource_owner : `ResourceOwner`
-			An **authorized** resource owner obtained from `complete()`
+		mw_uri : `str`
+			The base URI of the MediaWiki installation.  Note that the URI 
+			should end in ``"index.php"''. 
+		consumer_token : `ConsumerToken`
+			A token representing you, the consumer.
+		access_token : `AccessToken`
+			A token representing an authorized user.  Obtained from `complete()`
+		leeway : `int`|`float`
+			The number of seconds of leeway to account for when examining a 
+			tokens "issued at" timestamp.
 		
 	:Returns:
 		A dictionary containing identity information.
 	"""
 	
 	# Construct an OAuth auth
-	auth = OAuth1(consumer.key, 
-	              client_secret=consumer.secret,
-	              resource_owner_key=resource_owner.key,
-	              resource_owner_secret=resource_owner.secret)
+	auth = OAuth1(consumer_token.key, 
+	              client_secret=consumer_token.secret,
+	              resource_owner_key=access_token.key,
+	              resource_owner_secret=access_token.secret)
 	
 	# Request the identity using auth
-	r = requests.post(url=uri,
+	r = requests.post(url=mw_uri,
 	                  params={'title': "Special:OAuth/identify"},
 	                  auth=auth)
 	
@@ -254,14 +266,14 @@ def identify(uri, consumer, resource_owner, leeway=10):
 	# Check signature
 	try:
 		jwt.verify_signature(identity, signing_input, header, signature,
-		                     consumer.secret, False)
+		                     consumer_token.secret, False)
 	except jwt.DecodeError as e:
 		raise Exception("Could not verify the jwt signature: {0}".format(e))
 	
 	
 	# Verify the issuer is who we expect (server sends $wgCanonicalServer)
 	issuer = urlparse(identity['iss']).netloc
-	expected_domain = urlparse(uri).netloc
+	expected_domain = urlparse(mw_uri).netloc
 	if not issuer == expected_domain:
 		raise Exception("Unexpected issuer " + \
 		                "{0}, expected {1}".format(issuer, expected_domain))
@@ -269,7 +281,7 @@ def identify(uri, consumer, resource_owner, leeway=10):
 	
 	# Verify we are the intended audience of this response
 	audience = identity['aud']
-	if not audience == consumer.key:
+	if not audience == consumer_token.key:
 		raise Exception("Unexpected audience " + \
 		                "{0}, expected {1}".format(aud, my_domain))
 	
@@ -301,21 +313,22 @@ class Handshaker:
 	Constructs a client for managing an OAuth handshake.
 	
 	:Parameters:
-		uri : `str`
+		mw_uri : `str`
 			The base URI of the wiki (provider) to authenticate with.  This uri
 			should end in "/w/index.php". 
-		consumer : `Consumer`
-			consumer/client
+		consumer_token : `ConsumerToken`
+			A token representing you, the consumer.  Provided by MediaWiki via
+			``Special:OAuthConsumerRegistration''.
 	"""
-	def __init__(self, uri, consumer):
-		self.uri = uri
-		self.consumer = consumer
+	def __init__(self, mw_uri, consumer_token):
+		self.mw_uri = mw_uri
+		self.consumer_token = consumer_token
 	
 	def initiate(self):
-		return initiate(self.uri, self.consumer)
+		return initiate(self.mw_uri, self.consumer_token)
 		
-	def complete(self, resource_owner, response_qs):
-		return complete(self.uri, self.consumer, resource_owner, response_qs)
+	def complete(self, request_token, response_qs):
+		return complete(self.mw_uri, self.consumer_token, request_token, response_qs)
 	
-	def identify(self, resource_owner):
-		return identify(self.uri, self.consumer, resource_owner)
+	def identify(self, access_token):
+		return identify(self.mw_uri, self.consumer_token, access_token)
