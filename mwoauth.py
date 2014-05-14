@@ -14,8 +14,8 @@ Example:
 	consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
 	
 	# Construct handshaker with wiki URI and consumer
-	handshaker = mwoauth.Handshaker("https://en.wikipedia.org/w/index.php",
-	                                consumer_token)
+	handshaker = Handshaker("https://en.wikipedia.org/w/index.php", 
+	                        consumer_token)
 	
 	# Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
 	redirect, request_token = handshaker.initiate()
