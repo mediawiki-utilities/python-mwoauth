@@ -5,7 +5,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 def requirements(fname):
-	for line in read(fname):
+	for line in open(os.path.join(os.path.dirname(__file__), fname)):
 		yield line.strip()
 
 setup(
@@ -18,7 +18,7 @@ setup(
     url = "https://github.com/halfak/MediaWiki-OAuth",
     py_modules = ['mwoauth'],
     long_description = read('README.rst'),
-    install_requires = list(requirements("requirements.txt")),
+    install_requires = list(requirements('requirements.txt')),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Security",
