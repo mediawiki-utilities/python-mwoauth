@@ -110,12 +110,13 @@ class OAuth:
 		# Expiration (exp) should be in the future
 		if not int(identify_token['exp']) >= now:
 			raise Exception('JSON Web Token Validation Problem, exp')
-		
-		# Verify we haven't seen this nonce before,
-		# which would indicate a replay attack
-		# TODO: implement nonce but this is not high priority
-		#if identify_token['nonce'] != <<original request nonce>>
-			#raise Exception('JSON Web Token Validation Problem, nonce')
+
+		# Verify that the nonce matches our request one,
+		# to avoid a replay attack
+		request_nonce = re.search(r'oauth_nonce="(.*?)"',
+			r.request.headers['Authorization']).group(1)
+		if identify_token['nonce'] != request_nonce:
+			raise Exception('JSON Web Token Validation Problem, nonce')
 		
 		return identify_token
 		
