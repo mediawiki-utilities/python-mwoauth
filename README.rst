@@ -1,14 +1,14 @@
 MediaWiki OAuth Library
 =======================
 
-This library provides a simple means to performing an OAuth handshake with a MediaWiki installation with the `OAuth Extension <https://www.mediawiki.org/wiki/Extension:OAuth>`_.
+``mwoauth`` is an open licensed (MIT) library designed to provide a simple means to performing an OAuth handshake with a MediaWiki installation with the `OAuth Extension <https://www.mediawiki.org/wiki/Extension:OAuth>`_ installed.  
 
 **Compatible with python 2.7 and 3.x**
 
 **Instal with pip:** ``pip install mwoauth``
 
 Usage
------
+=====
 
 .. code-block:: python
 

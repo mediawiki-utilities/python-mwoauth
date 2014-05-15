@@ -1,38 +1,5 @@
-"""
-Provides a collection of utilities for easily working with MediaWiki's OAuth1.0a
-implementation.
-
-Example:
-
-.. code-block::python
-
-	from mwoauth import ConsumerToken, Handshaker
-	from six.moves import input # For compatibility between python 2 and 3
-	
-	# Consruct a "consumer" from the key/secret provided by MediaWiki
-	import config
-	consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
-	
-	# Construct handshaker with wiki URI and consumer
-	handshaker = Handshaker("https://en.wikipedia.org/w/index.php", 
-	                        consumer_token)
-	
-	# Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
-	redirect, request_token = handshaker.initiate()
-	
-	# Step 2: Authorize -- send user to MediaWiki to confirm authorization
-	print("Point your browser to: %s" % redirect) # 
-	response_qs = input("Response query string: ")
-	
-	# Step 3: Complete -- obtain authorized key/secret for "resource owner"
-	access_token = handshaker.complete(request_token, response_qs)
-	print(str(access_token))
-	
-	# Step 4: Identify -- (optional) get identifying information about the user
-	identity = handshaker.identify(access_token)
-	print("Identified as {username}.".format(**identity))
-
-"""
+"""Provides a collection of utilities for easily working with MediaWiki's 
+OAuth1.0a implementation."""
 from collections import namedtuple
 import jwt, requests, time, six
 from requests_oauthlib import OAuth1
@@ -60,8 +27,8 @@ class ConsumerToken(Token):
 	"""
 	Represents a consumer (you).  This key/secrets pair is provided by MediaWiki
 	when you register an OAuth consumer (see 
-	``Special:OAuthConsumerRegistration''). Note that Extension:OAuth must be 
-	installed in order in order for ``Special:OAuthConsumerRegistration'' to 
+	``Special:OAuthConsumerRegistration``). Note that Extension:OAuth must be 
+	installed in order in order for ``Special:OAuthConsumerRegistration`` to 
 	appear. 
 	
 	:Parameters:
@@ -75,7 +42,7 @@ class ConsumerToken(Token):
 class RequestToken(Token):
 	"""
 	Represents a request for access during authorization.  This key/secret pair 
-	is provided by MediaWiki via ``Special:OAuth/initiate''.  
+	is provided by MediaWiki via ``Special:OAuth/initiate``.  
 	Once the user authorize you, this token can be traded for an `AccessToken`
 	via `complete()`.
 	
@@ -90,7 +57,7 @@ class RequestToken(Token):
 class AccessToken(Token): 
 	"""
 	Represents an authorized user.  This key and secret is provided by MediaWiki
-	via ``Special:OAuth/complete'' and later used to show MediaWiki evidence of
+	via ``Special:OAuth/complete`` and later used to show MediaWiki evidence of
 	authorization.
 	
 	:Parameters:
@@ -120,16 +87,16 @@ def initiate(mw_uri, consumer_token):
 	:Parameters:
 		mw_uri : `str`
 			The base URI of the MediaWiki installation.  Note that the URI 
-			should end in ``"index.php"''. 
-		consumer_token : `ConsumerToken`
+			should end in ``"index.php"``. 
+		consumer_token : :class:`~mwoauth.ConsumerToken`
 			A token representing you, the consumer.  Provided by MediaWiki via
-			``Special:OAuthConsumerRegistration''.
+			``Special:OAuthConsumerRegistration``.
 	
 	:Returns:
 		A `tuple` of two values:
 		
 		* a MediaWiki URL to direct the user to
-		* a `RequestToken` representing a request for access
+		* a :class:`~mwoauth.RequestToken` representing a request for access
 		
 	
 	"""
@@ -166,10 +133,10 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
 	:Parameters:
 		mw_uri : `str`
 			The base URI of the MediaWiki installation.  Note that the URI 
-			should end in ``"index.php"''. 
-		consumer_token : `ConsumerToken`
+			should end in ``"index.php"``. 
+		consumer_token : :class:`~mwoauth.ConsumerToken`
 			A key/secret pair representing you, the consumer.
-		request_token : `RequestToken`
+		request_token : :class:`~mwoauth.RequestToken`
 			A temporary token representing the user.  Returned by 
 			`initiate()`.
 		response_qs : `bytes`
@@ -209,8 +176,8 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
 	credentials = parse_qs(r.content)
 	
 	if credentials == None:
-		raise Exception("Expected x-www-form-urlencoded response from " + \
-		                "MediaWiki, but got some else instead: {0}".format(r.content))
+		raise Exception("Expected x-www-form-urlencoded response, " + 
+		                "but got some else instead: {0}".format(r.content))
 	
 	access_token = AccessToken(
 		credentials.get(six.b('oauth_token'))[0],
@@ -226,12 +193,12 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 	:Parameters:
 		mw_uri : `str`
 			The base URI of the MediaWiki installation.  Note that the URI 
-			should end in ``"index.php"''. 
-		consumer_token : `ConsumerToken`
+			should end in ``"index.php"``. 
+		consumer_token : :class:`~mwoauth.ConsumerToken`
 			A token representing you, the consumer.
-		access_token : `AccessToken`
+		access_token : :class:`~mwoauth.AccessToken`
 			A token representing an authorized user.  Obtained from `complete()`
-		leeway : `int`|`float`
+		leeway : `int` | `float`
 			The number of seconds of leeway to account for when examining a 
 			tokens "issued at" timestamp.
 		
@@ -312,23 +279,93 @@ class Handshaker:
 	"""
 	Constructs a client for managing an OAuth handshake.
 	
+	:Example: 
+		.. code-block:: python
+		
+			from mwoauth import ConsumerToken, Handshaker
+			from six.moves import input # For compatibility between python 2 and 3
+			
+			# Consruct a "consumer" from the key/secret provided by MediaWiki
+			import config
+			consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
+			
+			# Construct handshaker with wiki URI and consumer
+			handshaker = Handshaker("https://en.wikipedia.org/w/index.php",
+			                        consumer_token)
+			
+			# Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
+			redirect, request_token = handshaker.initiate()
+			
+			# Step 2: Authorize -- send user to MediaWiki to confirm authorization
+			print("Point your browser to: %s" % redirect) # 
+			response_qs = input("Response query string: ")
+			
+			# Step 3: Complete -- obtain authorized key/secret for "resource owner"
+			access_token = handshaker.complete(request_token, response_qs)
+			print(str(access_token))
+			
+			# Step 4: Identify -- (optional) get identifying information about the user
+			identity = handshaker.identify(access_token)
+			print("Identified as {username}.".format(**identity))
+	
 	:Parameters:
 		mw_uri : `str`
 			The base URI of the wiki (provider) to authenticate with.  This uri
-			should end in "/w/index.php". 
-		consumer_token : `ConsumerToken`
+			should end in ``"index.php"``. 
+		consumer_token : :class:`~mwoauth.ConsumerToken`
 			A token representing you, the consumer.  Provided by MediaWiki via
-			``Special:OAuthConsumerRegistration''.
+			``Special:OAuthConsumerRegistration``.
 	"""
 	def __init__(self, mw_uri, consumer_token):
 		self.mw_uri = mw_uri
 		self.consumer_token = consumer_token
 	
 	def initiate(self):
+		"""
+		Initiates an OAuth handshake with MediaWiki.
+		
+		:Returns:
+			A `tuple` of two values:
+			
+			* a MediaWiki URL to direct the user to
+			* a :class:`~mwoauth.RequestToken` representing an access request
+			
+		
+		"""
 		return initiate(self.mw_uri, self.consumer_token)
 		
 	def complete(self, request_token, response_qs):
+		"""
+		Completes an OAuth handshake with MediaWiki by exchanging an 
+		
+		:Parameters:
+			request_token : `RequestToken`
+				A temporary token representing the user.  Returned by 
+				`initiate()`.
+			response_qs : `bytes`
+				The query string of the URL that MediaWiki forwards the user 
+				back after authorization.
+			
+		:Returns:
+			An :class:`~mwoauth.AccessToken` containing an authorized key/secret 
+			pair that can be stored and used by you.
+		"""
 		return complete(self.mw_uri, self.consumer_token, request_token, response_qs)
 	
-	def identify(self, access_token):
-		return identify(self.mw_uri, self.consumer_token, access_token)
+	def identify(self, access_token, leeway=10.0):
+		"""
+		Gather's identifying information about a user via an authorized token.
+		
+		:Parameters:
+			access_token : `AccessToken`
+				A token representing an authorized user.  Obtained from 
+				`complete()`.
+			leeway : `int` | `float`
+				The number of seconds of leeway to account for when examining a 
+				tokens "issued at" timestamp.
+			
+		:Returns:
+			A dictionary containing identity information.
+		"""
+		return identify(self.mw_uri, self.consumer_token, access_token, 
+		                leeway=leeway)

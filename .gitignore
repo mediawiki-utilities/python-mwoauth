@@ -1,3 +1,9 @@
+# Temp files
+*~
+
+# Secret files for demoing
+config.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -51,4 +57,4 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
-
+doc/_build/
