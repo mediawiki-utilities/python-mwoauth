@@ -10,7 +10,14 @@ MediaWiki OAuth Library Documentation
 
 **Compatible with python 2.7 and 3.x**
 
-**Instal with pip:** ``pip install mwoauth``
+**Install with pip:** ``pip install mwoauth``
+
+There are two ways to use this library:
+
+* :class:`~mwoauth.Handshaker` -- an object oriented handshake manager
+* A set of stateless functions: :py:func:`~moauth.intitiate`, :py:func:`~moauth.complete` and :py:func:`~moauth.identify`.
+
+Both of strategies make use of the same set of tokens (:class:`~mwoauth.ConsumerToken`, :class:`~mwoauth.RequestToken` and :class:`~mwoauth.AccessToken`) and are totally inter-operable (if you like to mixing things up).
 
 
 The OAuth Handshaker

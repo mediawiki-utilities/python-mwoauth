@@ -275,7 +275,7 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 	return identity
 
 
-class Handshaker:
+class Handshaker(object):
 	"""
 	Constructs a client for managing an OAuth handshake.
 	
