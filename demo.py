@@ -22,4 +22,4 @@ print(str(access_token))
 
 # Step 4: Identify -- (optional) get identifying information about the user
 identity = handshaker.identify(access_token)
-print("Identified as {username}.".format(**identity))
+print("Identified as {username} (id={sub}).".format(**identity))
