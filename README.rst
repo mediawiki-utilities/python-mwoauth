@@ -7,7 +7,7 @@ MediaWiki OAuth Library
 
 **Instal with pip:** ``pip install mwoauth``
 
-**Documentation:** `http://pythonhosted.org/mwoauth`_
+**Documentation:** http://pythonhosted.org/mwoauth
 
 Usage
 =====
