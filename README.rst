@@ -5,7 +5,7 @@ MediaWiki OAuth Library
 
 **Compatible with python 2.7 and 3.x**
 
-**Instal with pip:** ``pip install mwoauth``
+**Install with pip:** ``pip install mwoauth``
 
 Usage
 =====
