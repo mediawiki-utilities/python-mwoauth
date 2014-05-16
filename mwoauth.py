@@ -4,6 +4,7 @@ from collections import namedtuple
 import jwt, requests, time, six
 from requests_oauthlib import OAuth1
 import six
+import re
 
 try:
 	from urlparse import parse_qs
@@ -265,12 +266,14 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 	if not now <= expiration:
 		raise Exception("Identity expired {0} ".format(expiration - now) + \
 		                "seconds ago!")
-	
-	# Verify we haven't seen this nonce before,
-	# which would indicate a replay attack
-	# TODO: implement nonce but this is not high priority
-	#if identity['nonce'] != <<original request nonce>>
-		#raise Exception('JSON Web Token Validation Problem, nonce')
+
+	# Verify that the nonce matches our request one,
+	# to avoid a replay attack
+	request_nonce = re.search(r'oauth_nonce="(.*?)"',
+		r.request.headers['Authorization']).group(1)
+	if identity['nonce'] != request_nonce:
+		raise Exception('Replay attack detected: {0} != {1}'.format(
+						identity['nonce'], request_nonce))
 	
 	return identity
 
