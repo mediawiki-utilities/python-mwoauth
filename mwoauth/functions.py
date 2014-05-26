@@ -28,7 +28,7 @@ OAuth handshake or to identify a MediaWiki user.
 		print("Identified as {username}.".format(**identity))
 """
 import jwt
-from six import b
+from six import b, text_type, PY3
 from six.moves.urllib.parse import urlencode, urlparse, parse_qs
 import re
 import requests
@@ -36,6 +36,15 @@ from requests_oauthlib import OAuth1
 import time
 
 from .tokens import RequestToken, AccessToken
+
+def force_unicode(val):
+	if type(val) == text_type:
+		return val
+	else:
+		if PY3:
+			return str(val, "unicode-escape")
+		else:
+			return unicode(val, "unicode-escape")
 
 def initiate(mw_uri, consumer_token):
 	"""
@@ -67,7 +76,7 @@ def initiate(mw_uri, consumer_token):
 	
 	credentials = parse_qs(r.content)
 	
-	if credentials == {}:
+	if credentials == None or credentials == {}:
 		raise Exception("Expected x-www-form-urlencoded response from " + \
 		                "MediaWiki, but got something else: " + \
 		                "{0}".format(repr(r.content)))
@@ -116,17 +125,29 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
 		can be stored and used by you.
 	"""
 	
-	callback_data = parse_qs(response_qs)
+	callback_data = parse_qs(b(response_qs))
 	
-	# Check if the query string references the right temp resource owner key
-	request_token_key = callback_data.get(b("oauth_token"))[0]
+	if callback_data == None or callback_data == {}:
+		raise Exception("Expected URL query string containing, but got " + \
+		                "something else instead: {0}".format(str(response_qs)))
+		
+	elif b('oauth_token') not in callback_data or \
+	     b('oauth_verifier') not in callback_data:
+		
+		raise Exception("Query string lacks token information: " \
+		                "{0}".format(repr(callback_data)))
+		
+	else:
+		# Check if the query string references the right temp resource owner key
+		request_token_key = callback_data.get(b("oauth_token"))[0]
+		# Get the verifier token
+		verifier = callback_data.get(b("oauth_verifier"))[0]
+	
 	if not request_token.key == request_token_key:
 		raise Exception("Unexpect request token key " + \
 		                "{0}, expected {1}.".format(request_token_key,
 		                                            request_token.key))
 	
-	# Get the verifier token
-	verifier = callback_data.get(b("oauth_verifier"))[0]
 	
 	# Construct a new auth with the verifier
 	auth = OAuth1(consumer_token.key, 
@@ -237,8 +258,9 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 
 	# Verify that the nonce matches our request one,
 	# to avoid a replay attack
+	authorization_header = force_unicode(r.request.headers['Authorization'])
 	request_nonce = re.search(r'oauth_nonce="(.*?)"',
-		r.request.headers['Authorization']).group(1)
+	                          authorization_header).group(1)
 	if identity['nonce'] != request_nonce:
 		raise Exception('Replay attack detected: {0} != {1}'.format(
 						identity['nonce'], request_nonce))
