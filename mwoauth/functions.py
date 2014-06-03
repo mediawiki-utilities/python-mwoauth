@@ -1,85 +1,50 @@
-"""Provides a collection of utilities for easily working with MediaWiki's 
-OAuth1.0a implementation."""
-from collections import namedtuple
-import jwt, requests, time, six
-from requests_oauthlib import OAuth1
-import six
-import re
-
-try:
-	from urlparse import parse_qs
-except ImportError:
-	from urllib.parse import parse_qs
-
-try:
-	from urllib import urlencode
-except ImportError:
-	from urllib.parse import urlencode
-
-try:
-	from urlparse import urlparse
-except ImportError:
-	from urllib.parse import urlparse
-
-
-Token = namedtuple("Token", ['key', 'secret'])
-
-class ConsumerToken(Token):
-	"""
-	Represents a consumer (you).  This key/secrets pair is provided by MediaWiki
-	when you register an OAuth consumer (see 
-	``Special:OAuthConsumerRegistration``). Note that Extension:OAuth must be 
-	installed in order in order for ``Special:OAuthConsumerRegistration`` to 
-	appear. 
+"""
+A set of stateless functions that can be used to complete various steps of an
+OAuth handshake or to identify a MediaWiki user.
+:Example: 
+	.. code-block:: python
 	
-	:Parameters:
-		key : `str`
-			A hex string identifying the user
-		secret : `str`
-			A hex string used to sign communications
-	"""
-	pass
-
-class RequestToken(Token):
-	"""
-	Represents a request for access during authorization.  This key/secret pair 
-	is provided by MediaWiki via ``Special:OAuth/initiate``.  
-	Once the user authorize you, this token can be traded for an `AccessToken`
-	via `complete()`.
-	
-	:Parameters:
-		key : `str`
-			A hex string identifying the user
-		secret : `str`
-			A hex string used to sign communications
-	"""
-	pass
-
-class AccessToken(Token): 
-	"""
-	Represents an authorized user.  This key and secret is provided by MediaWiki
-	via ``Special:OAuth/complete`` and later used to show MediaWiki evidence of
-	authorization.
-	
-	:Parameters:
-		key : `str`
-			A hex string identifying the user
-		secret : `str`
-			A hex string used to sign communications
-	"""
-	pass
-
-def safe_parse_qs(qs):
-	params = parse_qs(qs)
-	
-	if params != None:
-		safe_params = {}
-		for key in params:
-			values = params[key]
-			safe_params[six.b(key)] = [six.b(v) for v in values]
+		from mwoauth import ConsumerToken, initiate, complete, identify
+		from six.moves import input # For compatibility between python 2 and 3
 		
-		return safe_params
-	
+		# Consruct a "consumer" from the key/secret provided by MediaWiki
+		import config
+		consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
+		mw_uri = "https://en.wikipedia.org/w/index.php"
+		
+		# Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
+		redirect, request_token = initiate(mw_uri, consumer_token)
+		
+		# Step 2: Authorize -- send user to MediaWiki to confirm authorization
+		print("Point your browser to: %s" % redirect) # 
+		response_qs = input("Response query string: ")
+		
+		# Step 3: Complete -- obtain authorized key/secret for "resource owner"
+		access_token = complete(mw_uri, consumer_token, request_token, response_qs)
+		print(str(access_token))
+		
+		# Step 4: Identify -- (optional) get identifying information about the user
+		identity = identify(mw_uri, consumer_token, access_token)
+		print("Identified as {username}.".format(**identity))
+"""
+import jwt
+from six import b, text_type, PY3
+from six.moves.urllib.parse import urlencode, urlparse, parse_qs
+import re
+import requests
+from requests_oauthlib import OAuth1
+import time
+
+from .tokens import RequestToken, AccessToken
+
+def force_unicode(val):
+	if type(val) == text_type:
+		return val
+	else:
+		if PY3:
+			return str(val, "unicode-escape")
+		else:
+			return unicode(val, "unicode-escape")
 
 def initiate(mw_uri, consumer_token):
 	"""
@@ -111,14 +76,25 @@ def initiate(mw_uri, consumer_token):
 	
 	credentials = parse_qs(r.content)
 	
-	if credentials == None:
+	if credentials == None or credentials == {}:
 		raise Exception("Expected x-www-form-urlencoded response from " + \
-		                "MediaWiki, but got some HTML formatted error instead.")
+		                "MediaWiki, but got something else: " + \
+		                "{0}".format(repr(r.content)))
 	
-	request_token = RequestToken(
-		credentials.get(six.b('oauth_token'))[0],
-		credentials.get(six.b('oauth_token_secret'))[0]
-	)
+	elif b('oauth_token') not in credentials or \
+	   b('oauth_token_secret') not in credentials:
+		
+		raise Exception("MediaWiki response lacks token information: " \
+		                "{0}".format(repr(credentials)))
+		
+	else:
+		
+		request_token = RequestToken(
+			credentials.get(b('oauth_token'))[0],
+			credentials.get(b('oauth_token_secret'))[0]
+		)
+	
+	
 	
 	return (
 		mw_uri + "?" + urlencode({'title': "Special:OAuth/authorize",
@@ -149,17 +125,29 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
 		can be stored and used by you.
 	"""
 	
-	callback_data = safe_parse_qs(response_qs)
+	callback_data = parse_qs(b(response_qs))
 	
-	# Check if the query string references the right temp resource owner key
-	request_token_key = callback_data.get(six.b("oauth_token"))[0]
+	if callback_data == None or callback_data == {}:
+		raise Exception("Expected URL query string containing, but got " + \
+		                "something else instead: {0}".format(str(response_qs)))
+		
+	elif b('oauth_token') not in callback_data or \
+	     b('oauth_verifier') not in callback_data:
+		
+		raise Exception("Query string lacks token information: " \
+		                "{0}".format(repr(callback_data)))
+		
+	else:
+		# Check if the query string references the right temp resource owner key
+		request_token_key = callback_data.get(b("oauth_token"))[0]
+		# Get the verifier token
+		verifier = callback_data.get(b("oauth_verifier"))[0]
+	
 	if not request_token.key == request_token_key:
 		raise Exception("Unexpect request token key " + \
 		                "{0}, expected {1}.".format(request_token_key,
 		                                            request_token.key))
 	
-	# Get the verifier token
-	verifier = callback_data.get(six.b("oauth_verifier"))[0]
 	
 	# Construct a new auth with the verifier
 	auth = OAuth1(consumer_token.key, 
@@ -181,8 +169,8 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
 		                "but got some else instead: {0}".format(r.content))
 	
 	access_token = AccessToken(
-		credentials.get(six.b('oauth_token'))[0],
-		credentials.get(six.b('oauth_token_secret'))[0]
+		credentials.get(b('oauth_token'))[0],
+		credentials.get(b('oauth_token_secret'))[0]
 	)
 	
 	return access_token
@@ -217,6 +205,7 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 	r = requests.post(url=mw_uri,
 	                  params={'title': "Special:OAuth/identify"},
 	                  auth=auth)
+	
 	
 	# Decode json & stuff
 	try:
@@ -269,106 +258,12 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 
 	# Verify that the nonce matches our request one,
 	# to avoid a replay attack
+	authorization_header = force_unicode(r.request.headers['Authorization'])
 	request_nonce = re.search(r'oauth_nonce="(.*?)"',
-		r.request.headers['Authorization']).group(1)
+	                          authorization_header).group(1)
 	if identity['nonce'] != request_nonce:
 		raise Exception('Replay attack detected: {0} != {1}'.format(
 						identity['nonce'], request_nonce))
 	
 	return identity
 
-
-class Handshaker(object):
-	"""
-	Constructs a client for managing an OAuth handshake.
-	
-	:Example: 
-		.. code-block:: python
-		
-			from mwoauth import ConsumerToken, Handshaker
-			from six.moves import input # For compatibility between python 2 and 3
-			
-			# Consruct a "consumer" from the key/secret provided by MediaWiki
-			import config
-			consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
-			
-			# Construct handshaker with wiki URI and consumer
-			handshaker = Handshaker("https://en.wikipedia.org/w/index.php",
-			                        consumer_token)
-			
-			# Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
-			redirect, request_token = handshaker.initiate()
-			
-			# Step 2: Authorize -- send user to MediaWiki to confirm authorization
-			print("Point your browser to: %s" % redirect) # 
-			response_qs = input("Response query string: ")
-			
-			# Step 3: Complete -- obtain authorized key/secret for "resource owner"
-			access_token = handshaker.complete(request_token, response_qs)
-			print(str(access_token))
-			
-			# Step 4: Identify -- (optional) get identifying information about the user
-			identity = handshaker.identify(access_token)
-			print("Identified as {username}.".format(**identity))
-	
-	:Parameters:
-		mw_uri : `str`
-			The base URI of the wiki (provider) to authenticate with.  This uri
-			should end in ``"index.php"``. 
-		consumer_token : :class:`~mwoauth.ConsumerToken`
-			A token representing you, the consumer.  Provided by MediaWiki via
-			``Special:OAuthConsumerRegistration``.
-	"""
-	def __init__(self, mw_uri, consumer_token):
-		self.mw_uri = mw_uri
-		self.consumer_token = consumer_token
-	
-	def initiate(self):
-		"""
-		Initiates an OAuth handshake with MediaWiki.
-		
-		:Returns:
-			A `tuple` of two values:
-			
-			* a MediaWiki URL to direct the user to
-			* a :class:`~mwoauth.RequestToken` representing an access request
-			
-		
-		"""
-		return initiate(self.mw_uri, self.consumer_token)
-		
-	def complete(self, request_token, response_qs):
-		"""
-		Completes an OAuth handshake with MediaWiki by exchanging an 
-		
-		:Parameters:
-			request_token : `RequestToken`
-				A temporary token representing the user.  Returned by 
-				`initiate()`.
-			response_qs : `bytes`
-				The query string of the URL that MediaWiki forwards the user 
-				back after authorization.
-			
-		:Returns:
-			An :class:`~mwoauth.AccessToken` containing an authorized key/secret 
-			pair that can be stored and used by you.
-		"""
-		return complete(self.mw_uri, self.consumer_token, request_token, response_qs)
-	
-	def identify(self, access_token, leeway=10.0):
-		"""
-		Gather's identifying information about a user via an authorized token.
-		
-		:Parameters:
-			access_token : `AccessToken`
-				A token representing an authorized user.  Obtained from 
-				`complete()`.
-			leeway : `int` | `float`
-				The number of seconds of leeway to account for when examining a 
-				tokens "issued at" timestamp.
-			
-		:Returns:
-			A dictionary containing identity information.
-		"""
-		return identify(self.mw_uri, self.consumer_token, access_token, 
-		                leeway=leeway)
