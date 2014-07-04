@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
@@ -16,7 +16,7 @@ setup(
 	description = ("A generic MediaWiki OAuth handshake helper."),
 	license = "MIT",
 	url = "https://github.com/halfak/MediaWiki-OAuth",
-	py_modules = ['mwoauth'],
+	packages=find_packages(),
 	long_description = read('README.rst'),
 	install_requires = [
 		'PyJWT',
