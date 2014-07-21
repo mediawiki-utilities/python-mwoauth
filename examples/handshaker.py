@@ -1,9 +1,12 @@
-import sys;sys.path.insert(0, ".")
+import sys
+
+sys.path.insert(0, ".")
 from mwoauth import ConsumerToken, Handshaker
-from six.moves import input # For compatibility between python 2 and 3
+from six.moves import input  # For compatibility between python 2 and 3
 
 # Consruct a "consumer" from the key/secret provided by MediaWiki
-import config # You'll need to provide this
+import config  # You'll need to provide this
+
 consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
 
 # Construct handshaker with wiki URI and consumer
@@ -14,7 +17,7 @@ handshaker = Handshaker("https://en.wikipedia.org/w/index.php",
 redirect, request_token = handshaker.initiate()
 
 # Step 2: Authorize -- send user to MediaWiki to confirm authorization
-print("Point your browser to: %s" % redirect) # 
+print("Point your browser to: %s" % redirect)  #
 response_qs = input("Response query string: ")
 
 # Step 3: Complete -- obtain authorized key/secret for "resource owner"
