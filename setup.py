@@ -21,6 +21,7 @@ setup(
     url="https://github.com/halfak/MediaWiki-OAuth",
     py_modules=['mwoauth'],
     long_description=read('README.rst'),
+    packages=['mwoauth'],
     install_requires=[
         'PyJWT',
         'oauthlib',
