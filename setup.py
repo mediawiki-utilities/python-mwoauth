@@ -19,7 +19,7 @@ setup(
     description=("A generic MediaWiki OAuth handshake helper."),
     license="MIT",
     url="https://github.com/halfak/MediaWiki-OAuth",
-    py_modules=['mwoauth'],
+    packages=find_packages(),
     long_description=read('README.rst'),
     install_requires=[
         'PyJWT',
