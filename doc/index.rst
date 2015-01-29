@@ -23,6 +23,8 @@ Both of strategies make use of the same set of tokens (:class:`~mwoauth.Consumer
 The OAuth Handshaker
 ====================
 
+.. automodule:: mwoauth.handshaker
+
 .. autoclass:: mwoauth.Handshaker
    :members:
    :member-order: bysource
@@ -30,6 +32,8 @@ The OAuth Handshaker
 
 Tokens
 ======
+
+.. automodule:: mwoauth.tokens
 
 .. autoclass:: mwoauth.ConsumerToken
    :members:
@@ -46,6 +50,8 @@ Tokens
 
 Stateless functions
 ===================
+
+.. automodule:: mwoauth.functions
 
 .. autofunction:: mwoauth.initiate
 
