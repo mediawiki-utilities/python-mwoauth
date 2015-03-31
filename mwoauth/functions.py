@@ -30,13 +30,14 @@ OAuth handshake or to identify a MediaWiki user.
 import re
 import time
 
-import requests
-
 import jwt
-from six import b, text_type, PY3
-from six.moves.urllib.parse import urlencode, urlparse, parse_qs
+import requests
 from requests_oauthlib import OAuth1
-from .tokens import RequestToken, AccessToken
+from six import PY3, b, text_type
+
+from six.moves.urllib.parse import parse_qs, urlencode, urlparse
+
+from .tokens import AccessToken, RequestToken
 
 
 def force_unicode(val):
@@ -49,7 +50,7 @@ def force_unicode(val):
             return unicode(val, "unicode-escape")
 
 
-def initiate(mw_uri, consumer_token):
+def initiate(mw_uri, consumer_token, callback=None):
     """
     Initiates an oauth handshake with MediaWik.
 
@@ -97,10 +98,15 @@ def initiate(mw_uri, consumer_token):
             credentials.get(b('oauth_token_secret'))[0]
         )
 
+    params = {'title': "Special:OAuth/authorize",
+              'oauth_token': request_token.key,
+              'oauth_consumer_key': consumer_token.key}
+
+    if callback is not None:
+        params['callback'] = callback
+
     return (
-        mw_uri + "?" + urlencode({'title': "Special:OAuth/authorize",
-                                  'oauth_token': request_token.key,
-                                  'oauth_consumer_key': consumer_token.key}),
+        mw_uri + "?" + urlencode(params),
         request_token
     )
 
@@ -208,24 +214,19 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
                       params={'title': "Special:OAuth/identify"},
                       auth=auth)
 
+
+
+
     # Decode json & stuff
     try:
-        identity, signing_input, header, signature = jwt.load(r.content)
-    except jwt.DecodeError as e:
+        identity = jwt.decode(r.content, consumer_token.secret,
+                              audience=consumer_token.key,
+                              algorithms=["HS256"],
+                              leeway=leeway)
+    except jwt.InvalidTokenError as e:
         raise Exception("An error occurred while trying to read json " +
                         "content: {0}".format(e))
 
-    # Ensure no downgrade in authentication
-    if not header['alg'] == "HS256":
-        raise Exception("Unexpected algorithm used for authentication " +
-                        "{0}, expected {1}".format("HS256", header['alg']))
-
-    # Check signature
-    try:
-        jwt.verify_signature(identity, signing_input, header, signature,
-                             consumer_token.secret, False)
-    except jwt.DecodeError as e:
-        raise Exception("Could not verify the jwt signature: {0}".format(e))
 
     # Verify the issuer is who we expect (server sends $wgCanonicalServer)
     issuer = urlparse(identity['iss']).netloc
@@ -233,26 +234,6 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
     if not issuer == expected_domain:
         raise Exception("Unexpected issuer " +
                         "{0}, expected {1}".format(issuer, expected_domain))
-
-    # Verify we are the intended audience of this response
-    audience = identity['aud']
-    if not audience == consumer_token.key:
-        raise Exception("Unexpected audience " +
-                        "{0}, expected {1}".format(audience, expected_domain))
-
-    now = time.time()
-
-    # Check that the identity was issued in the past.
-    issued_at = float(identity['iat'])
-    if not now >= (issued_at - leeway):
-        raise Exception("Identity issued {0} ".format(issued_at - now) +
-                        "seconds in the future!")
-
-    # Check that the identity has not yet expired
-    expiration = float(identity['exp'])
-    if not now <= expiration:
-        raise Exception("Identity expired {0} ".format(expiration - now) +
-                        "seconds ago!")
 
     # Verify that the nonce matches our request one,
     # to avoid a replay attack
