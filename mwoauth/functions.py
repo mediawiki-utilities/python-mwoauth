@@ -210,22 +210,20 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
 
     # Decode json & stuff
     try:
-        identity, signing_input, header, signature = jwt.load(r.content)
+        identity = jwt.decode(r.content, consumer_token.secret,
+                              audience=consumer_token.key,
+                              algorithms=['HS256'])
     except jwt.DecodeError as e:
         raise Exception("An error occurred while trying to read json " +
                         "content: {0}".format(e))
-
-    # Ensure no downgrade in authentication
-    if not header['alg'] == "HS256":
-        raise Exception("Unexpected algorithm used for authentication " +
-                        "{0}, expected {1}".format("HS256", header['alg']))
-
-    # Check signature
-    try:
-        jwt.verify_signature(identity, signing_input, header, signature,
-                             consumer_token.secret, False)
-    except jwt.DecodeError as e:
-        raise Exception("Could not verify the jwt signature: {0}".format(e))
+    except jwt.exceptions.InvalidAlgorithmError as e:
+        raise Exception("Unexpected algorithm used for authentication: " +
+                "{0}".format(e))
+    except jwt.ExpiredSignatureError as e:
+        raise Exception("Identity has expired")
+    except jwt.InvalidAudienceError as e:
+        raise Exception("Unexpected audience, different from consumer" +
+                        "token key")
 
     # Verify the issuer is who we expect (server sends $wgCanonicalServer)
     issuer = urlparse(identity['iss']).netloc
@@ -234,25 +232,12 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
         raise Exception("Unexpected issuer " +
                         "{0}, expected {1}".format(issuer, expected_domain))
 
-    # Verify we are the intended audience of this response
-    audience = identity['aud']
-    if not audience == consumer_token.key:
-        raise Exception("Unexpected audience " +
-                        "{0}, expected {1}".format(audience, expected_domain))
-
-    now = time.time()
-
     # Check that the identity was issued in the past.
+    now = time.time()
     issued_at = float(identity['iat'])
     if not now >= (issued_at - leeway):
         raise Exception("Identity issued {0} ".format(issued_at - now) +
                         "seconds in the future!")
-
-    # Check that the identity has not yet expired
-    expiration = float(identity['exp'])
-    if not now <= expiration:
-        raise Exception("Identity expired {0} ".format(expiration - now) +
-                        "seconds ago!")
 
     # Verify that the nonce matches our request one,
     # to avoid a replay attack
