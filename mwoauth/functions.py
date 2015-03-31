@@ -227,13 +227,20 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
         raise Exception("An error occurred while trying to read json " +
                         "content: {0}".format(e))
 
-
     # Verify the issuer is who we expect (server sends $wgCanonicalServer)
     issuer = urlparse(identity['iss']).netloc
     expected_domain = urlparse(mw_uri).netloc
     if not issuer == expected_domain:
         raise Exception("Unexpected issuer " +
                         "{0}, expected {1}".format(issuer, expected_domain))
+
+
+    # Check that the identity was issued in the past.
+    now = time.time()
+    issued_at = float(identity['iat'])
+    if not now >= (issued_at - leeway):
+        raise Exception("Identity issued {0} ".format(issued_at - now) +
+                        "seconds in the future!")
 
     # Verify that the nonce matches our request one,
     # to avoid a replay attack

@@ -22,7 +22,7 @@ setup(
     packages=find_packages(),
     long_description=read('README.rst'),
     install_requires=[
-        'PyJWT',
+        'PyJWT>=1.0.1,<2.0.0',
         'oauthlib',
         'requests',
         'requests-oauthlib',
