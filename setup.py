@@ -13,7 +13,7 @@ def requirements(fname):
 
 setup(
     name="mwoauth",
-    version=read('VERSION').strip(),
+    version="0.2.5",  # Change in mwoauth/__init__.py too
     author="Aaron Halfaker / Filippo Valsorda",
     author_email="ahalfaker@wikimedia.org",
     description=("A generic MediaWiki OAuth handshake helper."),
