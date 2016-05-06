@@ -49,9 +49,13 @@ class Handshaker(object):
         self.mw_uri = mw_uri
         self.consumer_token = consumer_token
 
-    def initiate(self, callback=None):
+    def initiate(self, callback='oob'):
         """
         Initiates an OAuth handshake with MediaWiki.
+
+        :Parameters:
+            callback : `str`
+                Callback URL. Defaults to 'oob'.
 
         :Returns:
             A `tuple` of two values:
