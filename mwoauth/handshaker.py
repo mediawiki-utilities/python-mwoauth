@@ -30,7 +30,7 @@ A client for managing an OAuth handshake with MediaWiki.
         identity = handshaker.identify(access_token)
         print("Identified as {username}.".format(**identity))
 """
-from .functions import initiate, complete, identify
+from .functions import complete, identify, initiate
 
 
 class Handshaker(object):
@@ -49,7 +49,7 @@ class Handshaker(object):
         self.mw_uri = mw_uri
         self.consumer_token = consumer_token
 
-    def initiate(self):
+    def initiate(self, callback=None):
         """
         Initiates an OAuth handshake with MediaWiki.
 
@@ -61,7 +61,7 @@ class Handshaker(object):
 
 
         """
-        return initiate(self.mw_uri, self.consumer_token)
+        return initiate(self.mw_uri, self.consumer_token, callback=callback)
 
     def complete(self, request_token, response_qs):
         """

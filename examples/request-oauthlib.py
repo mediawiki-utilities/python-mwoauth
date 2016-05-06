@@ -1,9 +1,10 @@
-from mwoauth import ConsumerToken, Handshaker
 import requests
+from mwoauth import ConsumerToken, Handshaker
 from requests_oauthlib import OAuth1
+
 from six.moves import input  # For compatibility between python 2 and 3
 
-# Consruct a "consumer" from the key/secret provided by MediaWiki
+import sys;sys.path.insert(0, ".")
 import config  # You'll need to provide this
 
 consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
@@ -41,5 +42,9 @@ response = requests.get(
     },
     auth=auth1
 )
-for item in response.json()['query']['watchlist']:
-    print("{title}\t{comment}".format(**item))
+doc = response.json()
+if 'error' in doc:
+    print(doc['error']['code'], doc['error']['info'])
+else:
+    for item in ['query']['watchlist']:
+        print("{title}\t{comment}".format(**item))
