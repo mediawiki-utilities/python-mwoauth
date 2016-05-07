@@ -10,10 +10,12 @@ OAuth handshake or to identify a MediaWiki user.
 
         # Consruct a "consumer" from the key/secret provided by MediaWiki
         import config
-        consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
+        consumer_token = ConsumerToken(
+            config.consumer_key, config.consumer_secret)
         mw_uri = "https://en.wikipedia.org/w/index.php"
 
-        # Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
+        # Step 1: Initialize -- ask MediaWiki for a temporary key/secret for
+        # user
         redirect, request_token = initiate(mw_uri, consumer_token)
 
         # Step 2: Authorize -- send user to MediaWiki to confirm authorization
@@ -21,10 +23,12 @@ OAuth handshake or to identify a MediaWiki user.
         response_qs = input("Response query string: ")
 
         # Step 3: Complete -- obtain authorized key/secret for "resource owner"
-        access_token = complete(mw_uri, consumer_token, request_token, response_qs)
+        access_token = complete(
+            mw_uri, consumer_token, request_token, response_qs)
         print(str(access_token))
 
-        # Step 4: Identify -- (optional) get identifying information about the user
+        # Step 4: Identify -- (optional) get identifying information about the
+        # user
         identity = identify(mw_uri, consumer_token, access_token)
         print("Identified as {username}.".format(**identity))
 """
@@ -146,7 +150,8 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
                         "{0}".format(repr(callback_data)))
 
     else:
-        # Check if the query string references the right temp resource owner key
+        # Check if the query string references the right temp resource owner
+        # key
         request_token_key = callback_data.get(b("oauth_token"))[0]
         # Get the verifier token
         verifier = callback_data.get(b("oauth_verifier"))[0]
@@ -194,7 +199,8 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
         consumer_token : :class:`~mwoauth.ConsumerToken`
             A token representing you, the consumer.
         access_token : :class:`~mwoauth.AccessToken`
-            A token representing an authorized user.  Obtained from `complete()`
+            A token representing an authorized user.  Obtained from
+            `complete()`
         leeway : `int` | `float`
             The number of seconds of leeway to account for when examining a
             tokens "issued at" timestamp.
@@ -214,9 +220,6 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
                       params={'title': "Special:OAuth/identify"},
                       auth=auth)
 
-
-
-
     # Decode json & stuff
     try:
         identity = jwt.decode(r.content, consumer_token.secret,
@@ -233,7 +236,6 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
     if not issuer == expected_domain:
         raise Exception("Unexpected issuer " +
                         "{0}, expected {1}".format(issuer, expected_domain))
-
 
     # Check that the identity was issued in the past.
     now = time.time()

@@ -9,13 +9,15 @@ A client for managing an OAuth handshake with MediaWiki.
 
         # Consruct a "consumer" from the key/secret provided by MediaWiki
         import config
-        consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
+        consumer_token = ConsumerToken(
+            config.consumer_key, config.consumer_secret)
 
         # Construct handshaker with wiki URI and consumer
-        handshaker = Handshaker("https://en.wikipedia.org/w/index.php",
-                                consumer_token)
+        handshaker = Handshaker(
+            "https://en.wikipedia.org/w/index.php", consumer_token)
 
-        # Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user
+        # Step 1: Initialize -- ask MediaWiki for a temporary key/secret for
+        # user
         redirect, request_token = handshaker.initiate()
 
         # Step 2: Authorize -- send user to MediaWiki to confirm authorization
@@ -26,7 +28,8 @@ A client for managing an OAuth handshake with MediaWiki.
         access_token = handshaker.complete(request_token, response_qs)
         print(str(access_token))
 
-        # Step 4: Identify -- (optional) get identifying information about the user
+        # Step 4: Identify -- (optional) get identifying information about the
+        # user
         identity = handshaker.identify(access_token)
         print("Identified as {username}.".format(**identity))
 """
@@ -80,10 +83,11 @@ class Handshaker(object):
                 back after authorization.
 
         :Returns:
-            An :class:`~mwoauth.AccessToken` containing an authorized key/secret
-            pair that can be stored and used by you.
+            An :class:`~mwoauth.AccessToken` containing an authorized
+            key/secret pair that can be stored and used by you.
         """
-        return complete(self.mw_uri, self.consumer_token, request_token, response_qs)
+        return complete(
+            self.mw_uri, self.consumer_token, request_token, response_qs)
 
     def identify(self, access_token, leeway=10.0):
         """

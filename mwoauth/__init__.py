@@ -5,3 +5,12 @@ from .tokens import AccessToken, ConsumerToken, RequestToken
 from .functions import initiate, complete, identify
 
 __version__ = "0.2.6"  # Change in setup.py too
+__all__ = [
+    AccessToken,
+    complete,
+    ConsumerToken,
+    Handshaker,
+    identify,
+    initiate,
+    RequestToken,
+]
