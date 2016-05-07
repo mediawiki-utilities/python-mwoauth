@@ -1,6 +1,7 @@
 """
 A set of stateless functions that can be used to complete various steps of an
 OAuth handshake or to identify a MediaWiki user.
+
 :Example:
     .. code-block:: python
 
