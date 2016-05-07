@@ -11,9 +11,16 @@ def requirements(fname):
         yield line.strip()
 
 
+# Read version from file shared with the module using technique from
+# https://python-packaging-user-guide.readthedocs.io/en/latest/single_source_version/
+base_dir = os.path.dirname(__file__)
+version = {}
+with open(os.path.join(base_dir, 'mwoauth', 'version.py')) as fp:
+    exec(fp.read(), version)
+
 setup(
     name="mwoauth",
-    version="0.2.6",  # Change in mwoauth/__init__.py too
+    version=version['__version__'],
     author="Aaron Halfaker / Filippo Valsorda",
     author_email="ahalfaker@wikimedia.org",
     description=("A generic MediaWiki OAuth handshake helper."),
