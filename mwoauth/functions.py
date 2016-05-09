@@ -50,7 +50,7 @@ def force_unicode(val):
             return unicode(val, "unicode-escape")
 
 
-def initiate(mw_uri, consumer_token, callback=None):
+def initiate(mw_uri, consumer_token, callback='oob'):
     """
     Initiates an oauth handshake with MediaWik.
 
@@ -61,6 +61,8 @@ def initiate(mw_uri, consumer_token, callback=None):
         consumer_token : :class:`~mwoauth.ConsumerToken`
             A token representing you, the consumer.  Provided by MediaWiki via
             ``Special:OAuthConsumerRegistration``.
+        callback : `str`
+            Callback URL. Defaults to 'oob'.
 
     :Returns:
         A `tuple` of two values:
@@ -72,7 +74,7 @@ def initiate(mw_uri, consumer_token, callback=None):
     """
     auth = OAuth1(consumer_token.key,
                   client_secret=consumer_token.secret,
-                  callback_uri='oob')
+                  callback_uri=callback)
 
     r = requests.post(url=mw_uri,
                       params={'title': "Special:OAuth/initiate"},
@@ -101,9 +103,6 @@ def initiate(mw_uri, consumer_token, callback=None):
     params = {'title': "Special:OAuth/authorize",
               'oauth_token': request_token.key,
               'oauth_consumer_key': consumer_token.key}
-
-    if callback is not None:
-        params['callback'] = callback
 
     return (
         mw_uri + "?" + urlencode(params),
