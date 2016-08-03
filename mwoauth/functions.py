@@ -105,7 +105,7 @@ def initiate(mw_uri, consumer_token, callback='oob'):
             credentials.get(b('oauth_token_secret'))[0]
         )
 
-    params = {'title': "Special:OAuth/authorize",
+    params = {'title': "Special:OAuth/authenticate",
               'oauth_token': request_token.key,
               'oauth_consumer_key': consumer_token.key}
 
