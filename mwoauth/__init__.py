@@ -3,7 +3,7 @@ OAuth1.0a implementation."""
 from .version import __version__
 from .handshaker import Handshaker
 from .tokens import AccessToken, ConsumerToken, RequestToken
-from .functions import initiate, complete, identify
+from .functions import OAuthException, initiate, complete, identify
 
 __all__ = [
     __version__,
@@ -13,5 +13,6 @@ __all__ = [
     Handshaker,
     identify,
     initiate,
+    OAuthException,
     RequestToken,
 ]
