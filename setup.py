@@ -1,31 +1,23 @@
 import os
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+about_path = os.path.join(os.path.dirname(__file__), "mwoauth/about.py")
+exec(compile(open(about_path).read(), about_path, "exec"))
 
-def requirements(fname):
-    for line in open(os.path.join(os.path.dirname(__file__), fname)):
-        yield line.strip()
-
-
-# Read version from file shared with the module using technique from
-# https://python-packaging-user-guide.readthedocs.io/en/latest/single_source_version/
-base_dir = os.path.dirname(__file__)
-version = {}
-with open(os.path.join(base_dir, 'mwoauth', 'version.py')) as fp:
-    exec(fp.read(), version)
 
 setup(
-    name="mwoauth",
-    version=version['__version__'],
-    author="Aaron Halfaker / Filippo Valsorda",
-    author_email="ahalfaker@wikimedia.org",
-    description=("A generic MediaWiki OAuth handshake helper."),
-    license="MIT",
-    url="https://github.com/halfak/MediaWiki-OAuth",
+    name=__name__,  # noqa
+    version=__version__,  # noqa
+    author=__author__,  # noqa
+    author_email=__author_email__,  # noqa
+    description=__description__,  # noqa
+    url=__url__,  # noqa
+    license=__license__,  # noqa
     packages=find_packages(),
     long_description=read('README.rst'),
     install_requires=[
@@ -40,5 +32,5 @@ setup(
         "Topic :: Security",
         "License :: OSI Approved :: MIT License",
         "Topic :: Software Development :: Libraries :: Python Modules"
-    ],
+    ]
 )
