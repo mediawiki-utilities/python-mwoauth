@@ -137,7 +137,7 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
         can be stored and used by you.
     """
 
-    callback_data = parse_qs(b(response_qs))
+    callback_data = parse_qs(_ensure_bytes(response_qs))
 
     if callback_data is None or callback_data == {}:
         raise Exception("Expected URL query string containing, but got " +
@@ -186,6 +186,15 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
     )
 
     return access_token
+
+
+def _ensure_bytes(val, encoding="ascii"):
+    if isinstance(val, bytes):
+        return val
+    elif str == bytes:
+        val.encode(encoding)
+    else:
+        bytes(val, encoding)
 
 
 def identify(mw_uri, consumer_token, access_token, leeway=10.0):
