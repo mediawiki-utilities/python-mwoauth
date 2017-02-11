@@ -42,6 +42,7 @@ from six import PY3, b, text_type
 
 from six.moves.urllib.parse import parse_qs, urlencode, urlparse
 
+from .errors import OAuthException
 from .tokens import AccessToken, RequestToken
 
 
@@ -88,15 +89,17 @@ def initiate(mw_uri, consumer_token, callback='oob'):
     credentials = parse_qs(r.content)
 
     if credentials is None or credentials == {}:
-        raise Exception("Expected x-www-form-urlencoded response from " +
-                        "MediaWiki, but got something else: " +
-                        "{0}".format(repr(r.content)))
+        raise OAuthException(
+            "Expected x-www-form-urlencoded response from " +
+            "MediaWiki, but got something else: " +
+            "{0}".format(repr(r.content)))
 
     elif b('oauth_token') not in credentials or \
          b('oauth_token_secret') not in credentials:
 
-        raise Exception("MediaWiki response lacks token information: "
-                        "{0}".format(repr(credentials)))
+        raise OAuthException(
+            "MediaWiki response lacks token information: "
+            "{0}".format(repr(credentials)))
 
     else:
 
@@ -140,14 +143,16 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
     callback_data = parse_qs(_ensure_bytes(response_qs))
 
     if callback_data is None or callback_data == {}:
-        raise Exception("Expected URL query string containing, but got " +
-                        "something else instead: {0}".format(str(response_qs)))
+        raise OAuthException(
+            "Expected URL query string, but got " +
+            "something else instead: {0}".format(str(response_qs)))
 
     elif b('oauth_token') not in callback_data or \
          b('oauth_verifier') not in callback_data:
 
-        raise Exception("Query string lacks token information: "
-                        "{0}".format(repr(callback_data)))
+        raise OAuthException(
+            "Query string lacks token information: "
+            "{0}".format(repr(callback_data)))
 
     else:
         # Check if the query string references the right temp resource owner
@@ -157,9 +162,9 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
         verifier = callback_data.get(b("oauth_verifier"))[0]
 
     if not request_token.key == request_token_key:
-        raise Exception("Unexpect request token key " +
-                        "{0}, expected {1}.".format(request_token_key,
-                                                    request_token.key))
+        raise OAuthException(
+            "Unexpect request token key " +
+            "{0}, expected {1}.".format(request_token_key, request_token.key))
 
     # Construct a new auth with the verifier
     auth = OAuth1(consumer_token.key,
@@ -177,8 +182,9 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
     credentials = parse_qs(r.content)
 
     if credentials is None:
-        raise Exception("Expected x-www-form-urlencoded response, " +
-                        "but got some else instead: {0}".format(r.content))
+        raise OAuthException(
+            "Expected x-www-form-urlencoded response, " +
+            "but got some else instead: {0}".format(r.content))
 
     access_token = AccessToken(
         credentials.get(b('oauth_token'))[0],
@@ -236,22 +242,25 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
                               algorithms=["HS256"],
                               leeway=leeway)
     except jwt.InvalidTokenError as e:
-        raise Exception("An error occurred while trying to read json " +
-                        "content: {0}".format(e))
+        raise OAuthException(
+            "An error occurred while trying to read json " +
+            "content: {0}".format(e))
 
     # Verify the issuer is who we expect (server sends $wgCanonicalServer)
     issuer = urlparse(identity['iss']).netloc
     expected_domain = urlparse(mw_uri).netloc
     if not issuer == expected_domain:
-        raise Exception("Unexpected issuer " +
-                        "{0}, expected {1}".format(issuer, expected_domain))
+        raise OAuthException(
+            "Unexpected issuer " +
+            "{0}, expected {1}".format(issuer, expected_domain))
 
     # Check that the identity was issued in the past.
     now = time.time()
     issued_at = float(identity['iat'])
     if not now >= (issued_at - leeway):
-        raise Exception("Identity issued {0} ".format(issued_at - now) +
-                        "seconds in the future!")
+        raise OAuthException(
+            "Identity issued {0} ".format(issued_at - now) +
+            "seconds in the future!")
 
     # Verify that the nonce matches our request one,
     # to avoid a replay attack
@@ -259,7 +268,8 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
     request_nonce = re.search(r'oauth_nonce="(.*?)"',
                               authorization_header).group(1)
     if identity['nonce'] != request_nonce:
-        raise Exception('Replay attack detected: {0} != {1}'.format(
-            identity['nonce'], request_nonce))
+        raise OAuthException(
+            'Replay attack detected: {0} != {1}'.format(
+                identity['nonce'], request_nonce))
 
     return identity
