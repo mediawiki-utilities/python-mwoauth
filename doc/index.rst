@@ -6,7 +6,7 @@
 MediaWiki OAuth Library Documentation
 =====================================
 
-``mwoauth`` is an open licensed (MIT) library designed to provide a simple means to performing an OAuth handshake with a MediaWiki installation with the `OAuth Extension <https://www.mediawiki.org/wiki/Extension:OAuth>`_ installed.  
+``mwoauth`` is an open licensed (MIT) library designed to provide a simple means to performing an OAuth handshake with a MediaWiki installation with the `OAuth Extension <https://www.mediawiki.org/wiki/Extension:OAuth>`_ installed.
 
 **Compatible with python 2.7 and 3.x**
 
@@ -19,6 +19,7 @@ There are two ways to use this library:
 
 Both of strategies make use of the same set of tokens (:class:`~mwoauth.ConsumerToken`, :class:`~mwoauth.RequestToken` and :class:`~mwoauth.AccessToken`) and are totally inter-operable (if you like to mixing things up).
 
+There's also a :class:`flask.Blueprint` handler.  See :mod:`mwoauth.flask`.
 
 The OAuth Handshaker
 ====================
@@ -80,4 +81,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
