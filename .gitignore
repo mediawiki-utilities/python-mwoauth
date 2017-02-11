@@ -2,7 +2,7 @@
 *~
 
 # Secret files for demoing
-config.py
+credentials.do_not_commit.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

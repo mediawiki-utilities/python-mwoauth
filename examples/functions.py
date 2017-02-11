@@ -1,13 +1,24 @@
+import json
 import sys
 
-sys.path.insert(0, ".")
-from mwoauth import ConsumerToken, initiate, complete, identify
+from mwoauth import ConsumerToken, complete, identify, initiate
+
 from six.moves import input  # For compatibility between python 2 and 3
 
-# Consruct a "consumer" from the key/secret provided by MediaWiki
-import config  # You'll need to provide this
+sys.path.insert(0, ".")
 
-consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
+try:
+    creds_doc = json.load(open("credentials.do_not_commit.json"))
+    consumer_key = creds_doc['consumer_key']
+    consumer_secret = creds_doc['consumer_secret']
+except FileNotFoundError:
+    print('Couldn\'t find "credentials.do_not_commit.json". ' +
+          'Please manually input credentials.')
+    consumer_key = input('Consumer key: ')
+    consumer_secret = input('Consumer secret: ')
+
+consumer_token = ConsumerToken(consumer_key, consumer_secret)
+
 mw_uri = "https://en.wikipedia.org/w/index.php"
 
 # Step 1: Initialize -- ask MediaWiki for a temporary key/secret for user

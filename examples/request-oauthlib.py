@@ -1,13 +1,22 @@
+import json
+
 import requests
 from mwoauth import ConsumerToken, Handshaker
 from requests_oauthlib import OAuth1
 
 from six.moves import input  # For compatibility between python 2 and 3
 
-import sys;sys.path.insert(0, ".")
-import config  # You'll need to provide this
+try:
+    creds_doc = json.load(open("credentials.do_not_commit.json"))
+    consumer_key = creds_doc['consumer_key']
+    consumer_secret = creds_doc['consumer_secret']
+except FileNotFoundError:
+    print('Couldn\'t find "credentials.do_not_commit.json". ' +
+          'Please manually input credentials.')
+    consumer_key = input('Consumer key: ')
+    consumer_secret = input('Consumer secret: ')
 
-consumer_token = ConsumerToken(config.consumer_key, config.consumer_secret)
+consumer_token = ConsumerToken(consumer_key, consumer_secret)
 
 # Construct handshaker with wiki URI and consumer
 handshaker = Handshaker("https://en.wikipedia.org/w/index.php",
