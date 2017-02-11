@@ -7,18 +7,16 @@ from .errors import OAuthException
 from .about import (__name__, __version__, __author__, __author_email__,
                     __description__, __license__, __url__)
 
-from .functions import initiate, complete, identify
-
 
 __all__ = [
-    AccessToken,
-    complete,
     ConsumerToken,
-    Handshaker,
-    identify,
-    initiate,
-    OAuthException,
     RequestToken,
+    AccessToken,
+    initiate,
+    complete,
+    identify,
+    Handshaker,
+    OAuthException,
     __name__, __version__, __author__, __author_email__,
     __description__, __license__, __url__
 ]
