@@ -43,6 +43,7 @@ flask_mwoauth = mwoauth.flask.MWOAuth(
     user_agent="Demo mwoauth.flask server.")
 app.register_blueprint(flask_mwoauth.bp)
 
+
 @app.route("/")
 def index():
     return "logged in as: " + \
@@ -55,7 +56,7 @@ def index():
 
 
 @app.route("/my_recent_edits")
-@flask_mwoauth.authorized
+@mwoauth.flask.authorized
 def my_recent_edits():
     username = flask_mwoauth.identify()['username']
     enwiki_session = flask_mwoauth.mwapi_session('https://en.wikipedia.org')

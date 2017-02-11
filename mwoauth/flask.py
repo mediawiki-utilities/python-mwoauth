@@ -1,3 +1,11 @@
+"""
+.. autoclass:: mwoauth.flask.MWOAuth
+  :members:
+  :member-order: bysource
+
+.. autofunction:: mwoauth.flask.authorized
+"""
+
 import logging
 from functools import wraps
 
@@ -6,7 +14,6 @@ from requests_oauthlib import OAuth1
 
 from six.moves.urllib.parse import urljoin
 
-from . import defaults
 from .errors import OAuthException
 from .handshaker import Handshaker
 from .tokens import AccessToken, RequestToken
@@ -28,6 +35,29 @@ class MWOAuth:
     /mwoauth/initiate with a "?next=" that will return them to the originating
     route once authorization is completed.
 
+    :Example:
+        .. code-block:: python
+
+            from flask import Flask
+            import mwoauth
+            import mwoauth.flask
+
+            app = Flask(__name__)
+
+            @app.route("/")
+            def index():
+                return "Hello world"
+
+            flask_mwoauth = mwoauth.flask.MWOAuth(
+                "https://en.wikipedia.org",
+                mwoauth.ConsumerToken("...", "..."))
+            app.register_blueprint(flask_mwoauth.bp)
+
+            @app.route("/my_settings/")
+            @flask_mwoauth.authorized
+            def my_settings():
+                return flask_mwoauth.identity()
+
     :Parameters:
         host : str
             The host name (including protocol) of the MediaWiki wiki to use
@@ -48,10 +78,9 @@ class MWOAuth:
             by MediaWiki.
         render_error : func
             A method that renders an error.  Takes two arguements:
-            message : str
-                The error message
-            status : int
-                The https status number
+
+            * message : str (The error message)
+            * status : int (The https status number)
         **kwargs : dict
             Parameters to be passed to :class:`flask.Blueprint` during
             its construction.
@@ -76,7 +105,7 @@ class MWOAuth:
             """
             Starts an OAuth handshake.
             """
-            mw_authorizer_url, request_token = self.get_handshaker().initiate()
+            mw_authorizer_url, request_token = self._handshaker().initiate()
             rt_session_key = _str(request_token.key) + "_request_token"
             next_session_key = _str(request_token.key) + "_next"
 
@@ -110,7 +139,7 @@ class MWOAuth:
 
             # Complete the handshake
             try:
-                access_token = self.get_handshaker().complete(
+                access_token = self._handshaker().complete(
                     RequestToken(**session[rt_session_key]),
                     _str(request.query_string))
             except OAuthException as e:
@@ -124,7 +153,7 @@ class MWOAuth:
                 dict(zip(access_token._fields, access_token))
 
             # Identify the user
-            identity = self.get_handshaker().identify(access_token)
+            identity = self._handshaker().identify(access_token)
             session['mwoauth_identity'] = identity
 
             # Redirect to wherever we're supposed to go
@@ -134,7 +163,7 @@ class MWOAuth:
                 return redirect(url_for(self.default_next))
 
         @self.bp.route("/mwoauth/identify/")
-        @self.authorized
+        @authorized
         def mwoauth_identify():
             """
             Returns user information if authenticated
@@ -154,7 +183,7 @@ class MWOAuth:
             else:
                 return self.render_logout()
 
-    def get_handshaker(self):
+    def _handshaker(self):
         if not self.handshaker:
             full_callback = urljoin(
                 request.url_root, url_for("mwoauth.mwoauth_callback"))
@@ -170,12 +199,24 @@ class MWOAuth:
         return session.get('mwoauth_identity')
 
     def mwapi_session(self, *args, **kwargs):
+        """
+        Creates :class:`mwapi.Session` that is authorized for the current
+        user.
+
+        `args` and `kwargs` are passed directly to :class:`mwapi.Session`
+        """
         import mwapi
         auth1 = self.generate_auth()
         return mwapi.Session(*args, **kwargs, user_agent=self.user_agent,
                              auth=auth1)
 
     def requests_session(self, *args, **kwargs):
+        """
+        Creates :class:`requests.Session` that is authorized for the current
+        user.
+
+        `args` and `kwargs` are passed directly to :class:`requests.Session`
+        """
         import requests
         auth1 = self.generate_auth()
         return requests.Session(*args, **kwargs, auth=auth1)
@@ -192,18 +233,23 @@ class MWOAuth:
             raise OAuthException(
                 "Cannot generate auth.  User has not authorized.")
 
-    @staticmethod
-    def authorized(route):
-        @wraps(route)
-        def authorized_route(*args, **kwargs):
-            if 'mwoauth_access_token' in session:
-                return route(*args, **kwargs)
-            else:
-                return redirect(
-                    url_for('mwoauth.mwoauth_initiate') +
-                    "?next=" + request.endpoint)
 
-        return authorized_route
+def authorized(route):
+    """
+    Wraps a flask route. Ensures that the user has authorized via OAuth or
+    redirects the user to the authorization endpoint with a delayed redirect
+    back to the originating endpoint.
+    """
+    @wraps(route)
+    def authorized_route(*args, **kwargs):
+        if 'mwoauth_access_token' in session:
+            return route(*args, **kwargs)
+        else:
+            return redirect(
+                url_for('mwoauth.mwoauth_initiate') +
+                "?next=" + request.endpoint)
+
+    return authorized_route
 
 
 def generic_logout():
