@@ -192,9 +192,9 @@ def _ensure_bytes(val, encoding="ascii"):
     if isinstance(val, bytes):
         return val
     elif str == bytes:
-        val.encode(encoding)
+        return val.encode(encoding)
     else:
-        bytes(val, encoding)
+        return bytes(val, encoding)
 
 
 def identify(mw_uri, consumer_token, access_token, leeway=10.0):
