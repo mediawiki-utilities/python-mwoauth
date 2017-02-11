@@ -33,7 +33,12 @@ A client for managing an OAuth handshake with MediaWiki.
         identity = handshaker.identify(access_token)
         print("Identified as {username}.".format(**identity))
 """
+import logging
+
+from . import defaults
 from .functions import complete, identify, initiate
+
+logger = logging.getLogger(__name__)
 
 
 class Handshaker(object):
@@ -46,13 +51,24 @@ class Handshaker(object):
         consumer_token : :class:`~mwoauth.ConsumerToken`
             A token representing you, the consumer.  Provided by MediaWiki via
             ``Special:OAuthConsumerRegistration``.
+        callback : `str`
+            Callback URL. Defaults to 'oob'.
     """
 
-    def __init__(self, mw_uri, consumer_token):
+    def __init__(self, mw_uri, consumer_token, callback='oob',
+                 user_agent=None):
         self.mw_uri = mw_uri
         self.consumer_token = consumer_token
+        self.callback = callback
+        if user_agent is None:
+            logger.warning("Sending requests with default User-Agent.  " +
+                           "Set 'user_agent' on mwoauth.flask.MWOAuth to " +
+                           "quiet this message.")
+            self.user_agent = defaults.USER_AGENT
+        else:
+            self.user_agent = user_agent
 
-    def initiate(self, callback='oob'):
+    def initiate(self, callback=None):
         """
         Initiates an OAuth handshake with MediaWiki.
 
@@ -68,7 +84,9 @@ class Handshaker(object):
 
 
         """
-        return initiate(self.mw_uri, self.consumer_token, callback=callback)
+        return initiate(self.mw_uri, self.consumer_token,
+                        callback=callback or self.callback,
+                        user_agent=self.user_agent)
 
     def complete(self, request_token, response_qs):
         """
@@ -87,7 +105,8 @@ class Handshaker(object):
             key/secret pair that can be stored and used by you.
         """
         return complete(
-            self.mw_uri, self.consumer_token, request_token, response_qs)
+            self.mw_uri, self.consumer_token, request_token, response_qs,
+            user_agent=self.user_agent)
 
     def identify(self, access_token, leeway=10.0):
         """
@@ -105,4 +124,4 @@ class Handshaker(object):
             A dictionary containing identity information.
         """
         return identify(self.mw_uri, self.consumer_token, access_token,
-                        leeway=leeway)
+                        leeway=leeway, user_agent=self.user_agent)

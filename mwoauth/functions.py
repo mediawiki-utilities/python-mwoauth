@@ -42,6 +42,7 @@ from six import PY3, b, text_type
 
 from six.moves.urllib.parse import parse_qs, urlencode, urlparse
 
+from . import defaults
 from .errors import OAuthException
 from .tokens import AccessToken, RequestToken
 
@@ -56,7 +57,8 @@ def force_unicode(val):
             return unicode(val, "unicode-escape")
 
 
-def initiate(mw_uri, consumer_token, callback='oob'):
+def initiate(mw_uri, consumer_token, callback='oob',
+             user_agent=defaults.USER_AGENT):
     """
     Initiates an oauth handshake with MediaWik.
 
@@ -84,7 +86,8 @@ def initiate(mw_uri, consumer_token, callback='oob'):
 
     r = requests.post(url=mw_uri,
                       params={'title': "Special:OAuth/initiate"},
-                      auth=auth)
+                      auth=auth,
+                      headers={'User-Agent': user_agent})
 
     credentials = parse_qs(r.content)
 
@@ -118,7 +121,8 @@ def initiate(mw_uri, consumer_token, callback='oob'):
     )
 
 
-def complete(mw_uri, consumer_token, request_token, response_qs):
+def complete(mw_uri, consumer_token, request_token, response_qs,
+             user_agent=defaults.USER_AGENT):
     """
     Completes an OAuth handshake with MediaWiki by exchanging an
 
@@ -176,7 +180,8 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
     # Send the verifier and ask for an authorized resource owner key/secret
     r = requests.post(url=mw_uri,
                       params={'title': "Special:OAuth/token"},
-                      auth=auth)
+                      auth=auth,
+                      headers={'User-Agent': user_agent})
 
     # Parse response and construct an authorized resource owner
     credentials = parse_qs(r.content)
@@ -203,7 +208,8 @@ def _ensure_bytes(val, encoding="ascii"):
         return bytes(val, encoding)
 
 
-def identify(mw_uri, consumer_token, access_token, leeway=10.0):
+def identify(mw_uri, consumer_token, access_token, leeway=10.0,
+             user_agent=defaults.USER_AGENT):
     """
     Gather's identifying information about a user via an authorized token.
 
@@ -233,7 +239,8 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0):
     # Request the identity using auth
     r = requests.post(url=mw_uri,
                       params={'title': "Special:OAuth/identify"},
-                      auth=auth)
+                      auth=auth,
+                      headers={'User-Agent': user_agent})
 
     # Decode json & stuff
     try:
