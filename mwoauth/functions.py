@@ -42,11 +42,8 @@ from six import PY3, b, text_type
 
 from six.moves.urllib.parse import parse_qs, urlencode, urlparse
 
+from .errors import OAuthException
 from .tokens import AccessToken, RequestToken
-
-
-class OAuthException(Exception):
-    pass
 
 
 def force_unicode(val):
@@ -147,7 +144,7 @@ def complete(mw_uri, consumer_token, request_token, response_qs):
 
     if callback_data is None or callback_data == {}:
         raise OAuthException(
-            "Expected URL query string containing, but got " +
+            "Expected URL query string, but got " +
             "something else instead: {0}".format(str(response_qs)))
 
     elif b('oauth_token') not in callback_data or \
