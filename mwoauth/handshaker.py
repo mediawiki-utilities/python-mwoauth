@@ -70,7 +70,7 @@ class Handshaker(object):
 
     def initiate(self, callback=None):
         """
-        Initiates an OAuth handshake with MediaWiki.
+        Initiate an OAuth handshake with MediaWiki.
 
         :Parameters:
             callback : `str`
@@ -90,7 +90,7 @@ class Handshaker(object):
 
     def complete(self, request_token, response_qs):
         """
-        Completes an OAuth handshake with MediaWiki by exchanging an
+        Complete an OAuth handshake with MediaWiki by exchanging an
 
         :Parameters:
             request_token : `RequestToken`
@@ -110,7 +110,7 @@ class Handshaker(object):
 
     def identify(self, access_token, leeway=10.0):
         """
-        Gather's identifying information about a user via an authorized token.
+        Gather identifying information about a user via an authorized token.
 
         :Parameters:
             access_token : `AccessToken`

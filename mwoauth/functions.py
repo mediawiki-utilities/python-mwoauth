@@ -60,7 +60,7 @@ def force_unicode(val):
 def initiate(mw_uri, consumer_token, callback='oob',
              user_agent=defaults.USER_AGENT):
     """
-    Initiates an oauth handshake with MediaWik.
+    Initiate an oauth handshake with MediaWiki.
 
     :Parameters:
         mw_uri : `str`
@@ -124,7 +124,7 @@ def initiate(mw_uri, consumer_token, callback='oob',
 def complete(mw_uri, consumer_token, request_token, response_qs,
              user_agent=defaults.USER_AGENT):
     """
-    Completes an OAuth handshake with MediaWiki by exchanging an
+    Complete an OAuth handshake with MediaWiki by exchanging an
 
     :Parameters:
         mw_uri : `str`
@@ -211,7 +211,7 @@ def _ensure_bytes(val, encoding="ascii"):
 def identify(mw_uri, consumer_token, access_token, leeway=10.0,
              user_agent=defaults.USER_AGENT):
     """
-    Gather's identifying information about a user via an authorized token.
+    Gather identifying information about a user via an authorized token.
 
     :Parameters:
         mw_uri : `str`

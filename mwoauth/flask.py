@@ -103,7 +103,7 @@ class MWOAuth:
         @self.bp.route("/mwoauth/initiate/")
         def mwoauth_initiate():
             """
-            Starts an OAuth handshake.
+            Start an OAuth handshake.
             """
             mw_authorizer_url, request_token = self._handshaker().initiate()
             rt_session_key = _str(request_token.key) + "_request_token"
@@ -121,7 +121,7 @@ class MWOAuth:
         @self.bp.route("/mwoauth/callback/")
         def mwoauth_callback():
             """
-            Completes the oauth handshake
+            Complete the oauth handshake
             """
             # Generate session keys
             request_token_key = _str(request.args.get('oauth_token', 'None'))
@@ -166,14 +166,14 @@ class MWOAuth:
         @authorized
         def mwoauth_identify():
             """
-            Returns user information if authenticated
+            Return user information if authenticated
             """
             return jsonify(session['mwoauth_identity'])
 
         @self.bp.route("/mwoauth/logout/")
         def mwoauth_logout():
             """
-            Deletes the local session.
+            Delete the local session.
             """
             session.pop('mwoauth_access_token', None)
             session.pop('mwoauth_identity', None)
@@ -200,7 +200,7 @@ class MWOAuth:
 
     def mwapi_session(self, *args, **kwargs):
         """
-        Creates :class:`mwapi.Session` that is authorized for the current
+        Create :class:`mwapi.Session` that is authorized for the current
         user.
 
         `args` and `kwargs` are passed directly to :class:`mwapi.Session`
@@ -212,7 +212,7 @@ class MWOAuth:
 
     def requests_session(self, *args, **kwargs):
         """
-        Creates :class:`requests.Session` that is authorized for the current
+        Create :class:`requests.Session` that is authorized for the current
         user.
 
         `args` and `kwargs` are passed directly to :class:`requests.Session`
@@ -236,8 +236,8 @@ class MWOAuth:
 
 def authorized(route):
     """
-    Wraps a flask route. Ensures that the user has authorized via OAuth or
-    redirects the user to the authorization endpoint with a delayed redirect
+    Wrap a flask route. Ensure that the user has authorized via OAuth or
+    redirect the user to the authorization endpoint with a delayed redirect
     back to the originating endpoint.
     """
     @wraps(route)
@@ -270,7 +270,7 @@ def encode_token(token):
 
 def _str(val):
     """
-    Ensures that the val is the default str() type for python2 or 3
+    Ensure that the val is the default str() type for python2 or 3
     """
     if str == bytes:
         if isinstance(val, str):
