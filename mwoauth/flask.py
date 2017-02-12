@@ -118,7 +118,7 @@ class MWOAuth:
 
         @self.bp.route("/mwoauth/callback/")
         def mwoauth_callback():
-            """Complete the oauth handshake"""
+            """Complete the oauth handshake."""
             # Generate session keys
             request_token_key = _str(request.args.get('oauth_token', 'None'))
             rt_session_key = request_token_key + "_request_token"
@@ -161,7 +161,7 @@ class MWOAuth:
         @self.bp.route("/mwoauth/identify/")
         @authorized
         def mwoauth_identify():
-            """Return user information if authenticated"""
+            """Return user information if authenticated."""
             return jsonify(session['mwoauth_identity'])
 
         @self.bp.route("/mwoauth/logout/")
@@ -261,7 +261,7 @@ def encode_token(token):
 
 
 def _str(val):
-    """Ensure that the val is the default str() type for python2 or 3"""
+    """Ensure that the val is the default str() type for python2 or 3."""
     if str == bytes:
         if isinstance(val, str):
             return val
