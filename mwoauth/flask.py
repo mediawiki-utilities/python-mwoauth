@@ -54,7 +54,7 @@ class MWOAuth:
             app.register_blueprint(flask_mwoauth.bp)
 
             @app.route("/my_settings/")
-            @flask_mwoauth.authorized
+            @mwoauth.flask.authorized
             def my_settings():
                 return flask_mwoauth.identity()
 
