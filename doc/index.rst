@@ -61,6 +61,12 @@ Stateless functions
 .. autofunction:: mwoauth.identify
 
 
+Flask Blueprint
+===============
+
+.. automodule:: mwoauth.flask
+
+
 About
 =================
 :authors:

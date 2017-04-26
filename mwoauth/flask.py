@@ -9,7 +9,7 @@
 import logging
 from functools import wraps
 
-from flask import Blueprint, jsonify, redirect, request, session, url_for
+import flask
 from requests_oauthlib import OAuth1
 
 from six.moves.urllib.parse import urljoin
@@ -24,10 +24,11 @@ logger = logging.getLogger(__name__)
 class MWOAuth:
     """
     Implements a basic MediaWiki OAuth pattern with a set of routes
-    * /mwoauth/initiate -- Starts an OAuth handshake
-    * /mwoauth/callback -- Completes an OAuth handshake
-    * /mwoauth/identify -- Gets identity information about an authorized user
-    * /mwoauth/logout   -- Dicards OAuth tokens and user identity
+
+    - /mwoauth/initiate -- Starts an OAuth handshake
+    - /mwoauth/callback -- Completes an OAuth handshake
+    - /mwoauth/identify -- Gets identity information about an authorized user
+    - /mwoauth/logout   -- Dicards OAuth tokens and user identity
 
     There's also a convenient decorator provided
     :func:`~mwoauth.flask.MWOAuth.authorized`.  When applied to a routing
@@ -90,7 +91,7 @@ class MWOAuth:
                  render_logout=None, render_indentify=None, render_error=None,
                  **kwargs):
 
-        self.bp = Blueprint('mwoauth', __name__, **kwargs)
+        self.bp = flask.Blueprint('mwoauth', __name__, **kwargs)
         self.host = host
         self.user_agent = user_agent
         self.consumer_token = consumer_token
@@ -108,26 +109,28 @@ class MWOAuth:
             next_session_key = _str(request_token.key) + "_next"
 
             # Ensures that Flask's default session storage strategy will work
-            session[rt_session_key] = \
+            flask.session[rt_session_key] = \
                 dict(zip(request_token._fields, request_token))
 
-            if 'next' in request.args:
-                session[next_session_key] = request.args.get('next')
+            if 'next' in flask.request.args:
+                flask.session[next_session_key] = \
+                    flask.request.args.get('next')
 
-            return redirect(mw_authorizer_url)
+            return flask.redirect(mw_authorizer_url)
 
         @self.bp.route("/mwoauth/callback/")
         def mwoauth_callback():
             """Complete the oauth handshake."""
             # Generate session keys
-            request_token_key = _str(request.args.get('oauth_token', 'None'))
+            request_token_key = _str(
+                flask.request.args.get('oauth_token', 'None'))
             rt_session_key = request_token_key + "_request_token"
             next_session_key = request_token_key + "_next"
 
             # Make sure we're continuing an in-progress handshake
-            if rt_session_key not in session:
-                session.pop(rt_session_key, None)
-                session.pop(next_session_key, None)
+            if rt_session_key not in flask.session:
+                flask.session.pop(rt_session_key, None)
+                flask.session.pop(next_session_key, None)
                 return self.render_error(
                     "OAuth callback failed.  " +
                     "Couldn't find request_token in session. " +
@@ -136,49 +139,53 @@ class MWOAuth:
             # Complete the handshake
             try:
                 access_token = self._handshaker().complete(
-                    RequestToken(**session[rt_session_key]),
-                    _str(request.query_string))
+                    RequestToken(**flask.session[rt_session_key]),
+                    _str(flask.request.query_string))
             except OAuthException as e:
-                session.pop(rt_session_key, None)
-                session.pop(next_session_key, None)
+                flask.session.pop(rt_session_key, None)
+                flask.session.pop(next_session_key, None)
                 return self.render_error(
                     "OAuth callback failed. " + str(e), 403)
 
             # Store the access token
-            session['mwoauth_access_token'] = \
+            flask.session['mwoauth_access_token'] = \
                 dict(zip(access_token._fields, access_token))
 
             # Identify the user
             identity = self._handshaker().identify(access_token)
-            session['mwoauth_identity'] = identity
+            flask.session['mwoauth_identity'] = identity
 
             # Redirect to wherever we're supposed to go
-            if next_session_key in session:
-                return redirect(url_for(session[next_session_key]))
+            if next_session_key in flask.session:
+                return flask.redirect(
+                    flask.url_for(flask.session[next_session_key]))
             else:
-                return redirect(url_for(self.default_next))
+                return flask.redirect(
+                    flask.url_for(self.default_next))
 
         @self.bp.route("/mwoauth/identify/")
         @authorized
         def mwoauth_identify():
             """Return user information if authenticated."""
-            return jsonify(session['mwoauth_identity'])
+            return flask.jsonify(flask.session['mwoauth_identity'])
 
         @self.bp.route("/mwoauth/logout/")
         def mwoauth_logout():
             """Delete the local session."""
-            session.pop('mwoauth_access_token', None)
-            session.pop('mwoauth_identity', None)
+            flask.session.pop('mwoauth_access_token', None)
+            flask.session.pop('mwoauth_identity', None)
 
-            if 'next' in request.args:
-                return redirect(url_for(request.args.get('next')))
+            if 'next' in flask.request.args:
+                return flask.redirect(
+                    flask.url_for(flask.request.args.get('next')))
             else:
                 return self.render_logout()
 
     def _handshaker(self):
         if not self.handshaker:
             full_callback = urljoin(
-                request.url_root, url_for("mwoauth.mwoauth_callback"))
+                flask.request.url_root,
+                flask.url_for("mwoauth.mwoauth_callback"))
             print(full_callback)
             self.handshaker = Handshaker(
                 self.host, self.consumer_token, user_agent=self.user_agent,
@@ -188,7 +195,7 @@ class MWOAuth:
 
     @staticmethod
     def identify():
-        return session.get('mwoauth_identity')
+        return flask.session.get('mwoauth_identity')
 
     def mwapi_session(self, *args, **kwargs):
         """
@@ -199,8 +206,8 @@ class MWOAuth:
         """
         import mwapi
         auth1 = self.generate_auth()
-        return mwapi.Session(*args, **kwargs, user_agent=self.user_agent,
-                             auth=auth1)
+        return mwapi.Session(*args, user_agent=self.user_agent, auth=auth1,
+                             **kwargs)
 
     def requests_session(self, *args, **kwargs):
         """
@@ -211,11 +218,12 @@ class MWOAuth:
         """
         import requests
         auth1 = self.generate_auth()
-        return requests.Session(*args, **kwargs, auth=auth1)
+        return requests.Session(*args, auth=auth1, **kwargs)
 
     def generate_auth(self):
-        if 'mwoauth_access_token' in session:
-            access_token = AccessToken(**session['mwoauth_access_token'])
+        if 'mwoauth_access_token' in flask.session:
+            access_token = AccessToken(
+                **flask.session['mwoauth_access_token'])
             auth1 = OAuth1(self.consumer_token.key,
                            client_secret=self.consumer_token.secret,
                            resource_owner_key=access_token.key,
@@ -234,12 +242,12 @@ def authorized(route):
     """
     @wraps(route)
     def authorized_route(*args, **kwargs):
-        if 'mwoauth_access_token' in session:
+        if 'mwoauth_access_token' in flask.session:
             return route(*args, **kwargs)
         else:
-            return redirect(
-                url_for('mwoauth.mwoauth_initiate') +
-                "?next=" + request.endpoint)
+            return flask.redirect(
+                flask.url_for('mwoauth.mwoauth_initiate') +
+                "?next=" + flask.request.endpoint)
 
     return authorized_route
 
@@ -249,7 +257,7 @@ def generic_logout():
 
 
 def generic_identify(identity):
-    return jsonify(identity)
+    return flask.jsonify(identity)
 
 
 def generic_error(message, status):

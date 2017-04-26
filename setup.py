@@ -6,6 +6,7 @@ from setuptools import find_packages, setup
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+
 about_path = os.path.join(os.path.dirname(__file__), "mwoauth/about.py")
 exec(compile(open(about_path).read(), about_path, "exec"))
 
@@ -27,6 +28,9 @@ setup(
         'requests-oauthlib',
         'six'
     ],
+    extras_require={
+        'flask': ['flask'],
+    },
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Security",
