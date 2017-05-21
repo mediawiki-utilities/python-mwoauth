@@ -244,15 +244,16 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0,
 
     # Special:OAuth/identify unhelpfully returns 200 status even when there is
     # an error in the API call. Check for error messages manually.
-    try:
-        resp = r.json()
-        if 'error' in resp:
+    if r.content.startswith(b'{'):
+        try:
+            resp = r.json()
+            if 'error' in resp:
+                raise OAuthException(
+                    "A MediaWiki API error occurred: {0}".format(resp['message']))
+        except ValueError:
             raise OAuthException(
-                "A MediaWiki API error occurred: {0}".format(resp['message']))
-    except ValueError as e:
-        raise OAuthException(
-            "An error occurred while trying to read json " +
-            "content: {0}".format(e))
+                "An error occurred while trying to read json " +
+                "content: {0}".format(e))
 
 
     # Decode json & stuff
