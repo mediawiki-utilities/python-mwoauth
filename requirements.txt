@@ -1,5 +1,3 @@
 PyJWT == 1.7.1
-oauthlib == 2.1.0
-requests == 2.21.0
-requests-oauthlib == 1.1.0
+requests-oauthlib == 1.2.0
 six == 1.12.0
