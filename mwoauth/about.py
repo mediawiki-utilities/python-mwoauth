@@ -1,5 +1,5 @@
 __name__ = "mwoauth"
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 __author__ = "Aaron Halfaker / Filippo Valsorda"
 __author_email__ = "aaron.halfaker@gmail.com"
 __description__ = "A generic MediaWiki OAuth handshake helper."
