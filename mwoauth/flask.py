@@ -28,7 +28,7 @@ class MWOAuth:
     - /mwoauth/initiate -- Starts an OAuth handshake
     - /mwoauth/callback -- Completes an OAuth handshake
     - /mwoauth/identify -- Gets identity information about an authorized user
-    - /mwoauth/logout   -- Dicards OAuth tokens and user identity
+    - /mwoauth/logout   -- Discards OAuth tokens and user identity
 
     There's also a convenient decorator provided
     :func:`~mwoauth.flask.MWOAuth.authorized`.  When applied to a routing
