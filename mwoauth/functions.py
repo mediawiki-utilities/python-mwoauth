@@ -47,14 +47,14 @@ from .errors import OAuthException
 from .tokens import AccessToken, RequestToken
 
 
-def force_unicode(val):
+def force_unicode(val, encoding="unicode-escape"):
     if type(val) == text_type:
         return val
     else:
         if PY3:
-            return str(val, "unicode-escape")
+            return val.decode(encoding, errors="replace")
         else:
-            return unicode(val, "unicode-escape")
+            return unicode(val, encoding, errors="replace")
 
 
 def initiate(mw_uri, consumer_token, callback='oob',
@@ -89,36 +89,37 @@ def initiate(mw_uri, consumer_token, callback='oob',
                       auth=auth,
                       headers={'User-Agent': user_agent})
 
-    credentials = parse_qs(r.content)
-
-    if credentials is None or credentials == {}:
-        raise OAuthException(
-            "Expected x-www-form-urlencoded response from " +
-            "MediaWiki, but got something else: " +
-            "{0}".format(repr(r.content)))
-
-    elif b('oauth_token') not in credentials or \
-         b('oauth_token_secret') not in credentials:
-
-        raise OAuthException(
-            "MediaWiki response lacks token information: "
-            "{0}".format(repr(credentials)))
-
-    else:
-
-        request_token = RequestToken(
-            credentials.get(b('oauth_token'))[0],
-            credentials.get(b('oauth_token_secret'))[0]
-        )
+    request_token = process_request_token(r.content)
 
     params = {'title': "Special:OAuth/authenticate",
               'oauth_token': request_token.key,
               'oauth_consumer_key': consumer_token.key}
 
-    return (
-        mw_uri + "?" + urlencode(params),
-        request_token
-    )
+    return (mw_uri + "?" + urlencode(params), request_token)
+
+
+def process_request_token(content):
+    text_content = force_unicode(content, "utf8")
+    if text_content.startswith(force_unicode("Error: ")):
+        raise OAuthException(text_content[len("Error: "):])
+
+    credentials = parse_qs(text_content)
+
+    if credentials is None or credentials == {}:
+        raise OAuthException(
+            "Expected x-www-form-urlencoded response from " +
+            "MediaWiki, but got something else: " +
+            "{0}".format(repr(text_content)))
+    elif 'oauth_token' not in credentials or \
+         'oauth_token_secret' not in credentials:
+        raise OAuthException(
+            "MediaWiki response lacks token information: "
+            "{0}".format(repr(credentials)))
+    else:
+        return RequestToken(
+            credentials.get('oauth_token')[0],
+            credentials.get('oauth_token_secret')[0]
+        )
 
 
 def complete(mw_uri, consumer_token, request_token, response_qs,
@@ -249,12 +250,12 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0,
             resp = r.json()
             if 'error' in resp:
                 raise OAuthException(
-                    "A MediaWiki API error occurred: {0}".format(resp['message']))
-        except ValueError:
+                    "A MediaWiki API error occurred: {0}"
+                    .format(resp['message']))
+        except ValueError as e:
             raise OAuthException(
                 "An error occurred while trying to read json " +
                 "content: {0}".format(e))
-
 
     # Decode json & stuff
     try:
