@@ -256,6 +256,11 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0,
             raise OAuthException(
                 "An error occurred while trying to read json " +
                 "content: {0}".format(e))
+    else:
+        raise OAuthException(
+            "Could not read response from 'Special:OAuth/identify'.  " +
+            "Maybe your MediaWiki is not configured correctly?  " +
+            "Expected JSON but instead got: {0!r}".format(r.content[:100]))
 
     # Decode json & stuff
     try:
