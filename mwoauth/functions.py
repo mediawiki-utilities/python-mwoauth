@@ -32,6 +32,7 @@ OAuth handshake or to identify a MediaWiki user.
         identity = identify(mw_uri, consumer_token, access_token)
         print("Identified as {username}.".format(**identity))
 """
+import json
 import re
 import time
 
@@ -166,7 +167,7 @@ def complete(mw_uri, consumer_token, request_token, response_qs,
         # Get the verifier token
         verifier = callback_data.get(b("oauth_verifier"))[0]
 
-    if not request_token.key == request_token_key:
+    if not request_token.key == force_unicode(request_token_key):
         raise OAuthException(
             "Unexpect request token key " +
             "{0}, expected {1}.".format(request_token_key, request_token.key))
@@ -245,33 +246,32 @@ def identify(mw_uri, consumer_token, access_token, leeway=10.0,
 
     # Special:OAuth/identify unhelpfully returns 200 status even when there is
     # an error in the API call. Check for error messages manually.
-    if r.content.startswith(b'{'):
-        try:
-            resp = r.json()
-            if 'error' in resp:
-                raise OAuthException(
-                    "A MediaWiki API error occurred: {0}"
-                    .format(resp['message']))
-        except ValueError as e:
-            raise OAuthException(
-                "An error occurred while trying to read json " +
-                "content: {0}".format(e))
-    else:
-        raise OAuthException(
-            "Could not read response from 'Special:OAuth/identify'.  " +
-            "Maybe your MediaWiki is not configured correctly?  " +
-            "Expected JSON but instead got: {0!r}".format(r.content[:100]))
-
-    # Decode json & stuff
     try:
         identity = jwt.decode(r.content, consumer_token.secret,
                               audience=consumer_token.key,
                               algorithms=["HS256"],
                               leeway=leeway)
     except jwt.InvalidTokenError as e:
-        raise OAuthException(
-            "An error occurred while trying to read json " +
-            "content: {0}".format(e))
+        if r.content.startswith(b'{'):
+            try:
+                resp = json.loads(r.content)
+                if 'error' in resp:
+                    raise OAuthException(
+                        "A MediaWiki API error occurred: {0}"
+                        .format(resp['message']))
+                else:
+                    raise OAuthException(
+                        "Unknown JSON response: {0!r}"
+                        .format(r.content[:100]))
+            except ValueError as e:
+                raise OAuthException(
+                    "An error occurred while trying to read json " +
+                    "content: {0}".format(e))
+        else:
+            raise OAuthException(
+                "Could not read response from 'Special:OAuth/identify'.  " +
+                "Maybe your MediaWiki is not configured correctly?  " +
+                "Expected JSON but instead got: {0!r}".format(r.content[:100]))
 
     # Verify the issuer is who we expect (server sends $wgCanonicalServer)
     issuer = urlparse(identity['iss']).netloc
