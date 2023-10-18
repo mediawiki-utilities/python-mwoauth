@@ -3,8 +3,6 @@ import sys
 
 from mwoauth import ConsumerToken, complete, identify, initiate
 
-from six.moves import input  # For compatibility between python 2 and 3
-
 sys.path.insert(0, ".")
 
 try:

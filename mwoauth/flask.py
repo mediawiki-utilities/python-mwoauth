@@ -8,11 +8,10 @@
 
 import logging
 from functools import wraps
+from urllib.parse import urljoin
 
 import flask
 from requests_oauthlib import OAuth1
-
-from six.moves.urllib.parse import urljoin
 
 from .errors import OAuthException
 from .handshaker import Handshaker
