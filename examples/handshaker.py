@@ -3,8 +3,6 @@ import sys
 
 from mwoauth import ConsumerToken, Handshaker
 
-from six.moves import input  # For compatibility between python 2 and 3
-
 try:
     creds_doc = json.load(open("credentials.do_not_commit.json"))
     consumer_key = creds_doc['consumer_key']

@@ -26,7 +26,6 @@ setup(
         'oauthlib',
         'requests',
         'requests-oauthlib',
-        'six'
     ],
     extras_require={
         'flask': ['flask'],

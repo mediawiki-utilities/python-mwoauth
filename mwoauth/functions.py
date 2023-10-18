@@ -6,7 +6,6 @@ OAuth handshake or to identify a MediaWiki user.
     .. code-block:: python
 
         from mwoauth import ConsumerToken, initiate, complete, identify
-        from six.moves import input # For compatibility between python 2 and 3
 
         # Consruct a "consumer" from the key/secret provided by MediaWiki
         import config
@@ -35,13 +34,11 @@ OAuth handshake or to identify a MediaWiki user.
 import json
 import re
 import time
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import jwt
 import requests
 from requests_oauthlib import OAuth1
-from six import PY3, text_type
-
-from six.moves.urllib.parse import parse_qs, urlencode, urlparse
 
 from . import defaults
 from .errors import OAuthException
@@ -49,13 +46,10 @@ from .tokens import AccessToken, RequestToken
 
 
 def force_unicode(val, encoding="unicode-escape"):
-    if type(val) == text_type:
+    if type(val) == str:
         return val
     else:
-        if PY3:
-            return val.decode(encoding, errors="replace")
-        else:
-            return unicode(val, encoding, errors="replace")  # noqa
+        return val.decode(encoding, errors="replace")
 
 
 def initiate(mw_uri, consumer_token, callback='oob',

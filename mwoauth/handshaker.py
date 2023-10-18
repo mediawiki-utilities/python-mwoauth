@@ -5,7 +5,6 @@ A client for managing an OAuth handshake with MediaWiki.
     .. code-block:: python
 
         from mwoauth import ConsumerToken, Handshaker
-        from six.moves import input # For compatibility between python 2 and 3
 
         # Consruct a "consumer" from the key/secret provided by MediaWiki
         import config
